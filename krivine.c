@@ -445,6 +445,7 @@ ccn_name2content(char *name)    // synchronous lookup of the (local?) CS
     return 0;
 }
 
+#ifdef ABSTRACT_MACHINE
 void
 ccn_store(char *name, char *content)  // synchronous add content to the CS
 {
@@ -466,6 +467,30 @@ ccn_store(char *name, char *content)  // synchronous add content to the CS
     cs[cs_cnt].content = strdup(content);
     cs_cnt++;
 }
+#else
+void
+ccn_store(struct ccnl_relay_s *ccnl, char *name, char *content)  // synchronous add content to the CS
+{
+    int i;
+//    printf("ccn_store(%s, %s)\n", name, content);
+
+    if (cs_cnt >= MAX_CONTENTSTORE) {
+	printf("** ccn_store: %d MAX_CONTENTSTORE reached, aborting\n", cs_cnt);
+	exit(1);
+    }
+    
+    for (i = 0; i < cs_cnt; i++) {
+	if (!strcmp(name, cs[i].name)) {
+	    if (strcmp(content, cs[i].content))
+		printf("** content store clash: should store name %s again, with differing content: old=<%s> new=<%s>\n", name, cs[i].content, content);
+	    return;
+	}
+    }
+    cs[cs_cnt].name = strdup(name);
+    cs[cs_cnt].content = strdup(content);
+    cs_cnt++;
+}
+#endif
 
 void
 ccn_store_update(char *name, char *content)  // synchronous add content to the CS
@@ -491,6 +516,7 @@ ccn_request(char *name)   // send an interest
     ccn_listen_for(name);
 }
 
+#ifdef ABSTRACT_MACHINE
 void
 ccn_announce(char *name, char *content)  // make new content available
 {
@@ -506,6 +532,23 @@ ccn_announce(char *name, char *content)  // make new content available
 	cs_in_name = strdup(name);
 */
 }
+#else
+void
+ccn_announce(struct ccnl_relay_s *ccnl, char *name, char *content)  // make new content available
+{
+//    printf("ccn_announce(%s, %s)\n", name, content);
+
+    ccn_store(ccnl, name, content);
+
+/*
+    if (cs_in_name)
+	printf("ERROR: cs_incoming already set to %s, new content %s ignored\n",
+	       cs_in_name, name);
+    else
+	cs_in_name = strdup(name);
+*/
+}
+#endif
 
 // ----------------------------------------------------------------------
 
@@ -911,7 +954,7 @@ log_ZAM(char *en, char *sn, struct term_s *t,
 // ----------------------------------------------------------------------
 
 char*
-ZAM_term(char *cfg) // written as forth approach
+ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 {
     char *en, *astack, *rstack = 0, *prog, *cp, *pending, *p;
     struct term_s *t;
@@ -970,7 +1013,11 @@ ZAM_term(char *cfg) // written as forth approach
 	}
 	cp = argstack2str(&sname, cname, astack);
 	if (cp) {
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(sname, cp);
+#else
+            ccn_store(ccnl, sname, cp);
+#endif
 	    free(cp);
 	}
 	if (pending)
@@ -978,7 +1025,11 @@ ZAM_term(char *cfg) // written as forth approach
 	else
 	    printf("** not implemented %d\n", __LINE__);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1026,11 +1077,19 @@ ZAM_term(char *cfg) // written as forth approach
 normal:
 	    cp = closure2str2(&cname, en, cp);
 	    if (cp)
-		ccn_store(cname, cp);
+#ifdef ABSTRACT_MACHINE
+                ccn_store(cname, cp);
+#else
+                ccn_store(ccnl, cname, cp);
+#endif
 	    cp = argstack2str(&sname, cname, astack);
 //	ccn_push(sname, cp);
 	    if (cp) {
-		ccn_store(sname, cp);
+#ifdef ABSTRACT_MACHINE
+                        ccn_store(sname, cp);
+#else
+                        ccn_store(ccnl, sname, cp);
+#endif
 		free(cp);
 	    }
 	}
@@ -1040,7 +1099,11 @@ normal:
 	    printf("** not implemented %d\n", __LINE__);
 
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else
+        ccn_announce(ccnl, cfg, cp); 
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1067,7 +1130,11 @@ normal:
 	    env = en ? ccn_name2content(en) : 0;
 	    cp = env2str(&en2, env, v, cname);
 	    if (cp)
+#ifdef ABSTRACT_MACHINE
 		ccn_store(en2, cp);
+#else
+                ccn_store(ccnl, en2, cp);
+#endif
 	} else
 	    en2 = en;
 
@@ -1076,7 +1143,11 @@ normal:
 	cp = config2str(&cfg, en2, tailname, rstack, pending);
 //	ccn_push(cfg, cp);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 	return cp;
 
     }
@@ -1101,7 +1172,11 @@ normal:
 	cp = config2str(&cfg, env, tailname, rstack, dummybuf);
 //	ccn_push(cfg, cp);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 	return cp;
     }
 
@@ -1150,7 +1225,11 @@ normal:
 		    end = 0;
 		cp = resstack2str(&rstack, cp, end);
 		if (cp)
+#ifdef ABSTRACT_MACHINE
 		    ccn_store(rstack, cp);
+#else
+                    ccn_store(ccnl, rstack, cp);
+#endif
 //	    } 
 		if (pending)
 		    sprintf(dummybuf, "TAILAPPLY%s", pending);
@@ -1167,7 +1246,11 @@ normal:
 	    }
 //	ccn_push(cfg, cp);
 	    ccn_listen_for(cfg);
-	    ccn_announce(cfg, cp);
+#ifdef ABSTRACT_MACHINE
+	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	    DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	    return cp;
 	}
@@ -1177,15 +1260,26 @@ normal:
 	    var = t->v;
 	    printKRIVINE(dummybuf, t->m, 0);
 	    cp = strdup(dummybuf);
+#ifdef NFN_FOX
 	    if (pending)
 		sprintf(dummybuf, "GRAB(%s);FOX(%s)%s", var, cp, pending);
 	    else
 		sprintf(dummybuf, "GRAB(%s);FOX(%s)", var, cp);
+#else 
+           if (pending)
+		sprintf(dummybuf, "GRAB(%s);RESOLVENAME(%s)%s", var, cp, pending);
+	   else
+		sprintf(dummybuf, "GRAB(%s);RESOLVENAME(%s)", var, cp); 
+#endif
 	    free(cp);
 	    cp = config2str(&cfg, en, astack, rstack, dummybuf);
 //	ccn_push(cfg, cp);
 	    ccn_listen_for(cfg);
-	    ccn_announce(cfg, cp);
+#ifdef ABSTRACT_MACHINE
+	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	    DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	    return cp;
 	}
@@ -1201,14 +1295,25 @@ normal:
 	    else
 		sprintf(dummybuf, "CLOSURENAME(%s);RESOLVENAME(%s)", p, cp);
 */
+#ifdef NFN_FOX
 	    if (pending)
 		sprintf(dummybuf, "CLOSURE(FOX(%s));FOX(%s)%s", p, cp, pending);
 	    else
 		sprintf(dummybuf, "CLOSURE(FOX(%s));FOX(%s)", p, cp);
+#else 
+             if (pending)
+		sprintf(dummybuf, "CLOSURE(RESOLVENAME(%s));RESOLVENAME(%s)%s", p, cp, pending);
+	    else
+		sprintf(dummybuf, "CLOSURE(RESOLVENAME(%s));RESOLVENAME(%s)", p, cp);
+#endif
 	    cp = config2str(&cfg, en, astack, rstack, dummybuf);
 //	ccn_push(cfg, cp);
 	    ccn_listen_for(cfg);
-	    ccn_announce(cfg, cp);
+#ifdef ABSTRACT_MACHINE
+	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	    DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	    return cp;
 	}
@@ -1223,7 +1328,11 @@ normal:
 
 	cp = resstack2str(&rstack, cp, "");
 	if (cp)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else 
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 //	cp =  acc ? "true" : "false";
 	cp =  acc ? "/x/y x" : "/x/y y";
@@ -1233,7 +1342,11 @@ normal:
 	    sprintf(dummybuf, "RESOLVENAME(%s)", cp);
 	cp = config2str(&cfg, en, astack, rstack, dummybuf);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	printf("new config is %s\n", cp);
 	return cp;
     }
@@ -1247,7 +1360,11 @@ normal:
 
 	cp = resstack2str(&rstack, cp, "");
 	if (rstack)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 //	cp =  acc ? "true" : "false";
 	cp =  acc ? "/x/y x" : "/x/y y";
@@ -1257,7 +1374,11 @@ normal:
 	    sprintf(dummybuf, "RESOLVENAME(%s)", cp);
 	cp = config2str(&cfg, en, astack, rstack, dummybuf);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	printf("new config is %s\n", cp);
 	return cp;
     }
@@ -1267,14 +1388,22 @@ normal:
 	DEBUGMSG(2, "---to do: OP_NIL <%s>\n", cp);
 	cp = resstack2str(&rstack, "NIL", cp ? cp+4 : 0);
 	if (cp)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 	if (pending)
 	    cp = config2str(&cfg, en, astack, rstack, pending+1);
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1286,7 +1415,11 @@ normal:
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1303,7 +1436,11 @@ normal:
 		cp = resstack2str(&rstack, cp ? cp+1 : 0, 0);
 //		printf("+%s\n", cp);
 		if (cp && rstack)
-		    ccn_store(rstack, cp);
+#ifdef ABSTRACT_MACHINE
+                        ccn_store(rstack, cp);
+#else
+                        ccn_store(ccnl, rstack, cp);
+#endif
 	    }
 	}
 
@@ -1312,7 +1449,11 @@ normal:
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1325,14 +1466,22 @@ normal:
 	sprintf(dummybuf, "%d", i1 - i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 	if (pending)
 	    cp = config2str(&cfg, en, astack, rstack, pending+1);
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1345,14 +1494,22 @@ normal:
 	sprintf(dummybuf, "%d", i1 + i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 	if (pending)
 	    cp = config2str(&cfg, en, astack, rstack, pending+1);
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	printf("cp %s; <--> cfg %s\n", cp, cfg);
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
@@ -1366,14 +1523,22 @@ normal:
 	sprintf(dummybuf, "%d", i1 * i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
+#ifdef ABSTRACT_MACHINE
 	    ccn_store(rstack, cp);
+#else
+            ccn_store(ccnl, rstack, cp);
+#endif
 
 	if (pending)
 	    cp = config2str(&cfg, en, astack, rstack, pending+1);
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1389,7 +1554,11 @@ normal:
 	else
 	    cp = config2str(&cfg, en, astack, rstack, "");
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 //	DEBUGMSG(2, "---new config is \"%s\"\n", cp);
 	return cp;
     }
@@ -1460,7 +1629,11 @@ normal:
 	if(a1) sprintf(rst+len, "|%s", a1);
 
 	char *name =  mkHash(rst);
-	ccn_store(name, rst);
+#ifdef ABSTRACT_MACHINE
+        ccn_store(name, rst);
+#else
+        ccn_store(ccnl, name, rst);
+#endif
 
 	
 	if (pending)
@@ -1470,8 +1643,12 @@ normal:
 	printf("CP: %s \n" , cp);
 
 	name = mkHash(cp);
-	ccn_store(name, cp);
-	ccn_listen_for(cp);
+#ifdef ABSTRACT_MACHINE
+        ccn_store(name, cp);
+#else
+        ccn_store(ccnl, name, cp);
+#endif
+	ccn_listen_for(cp); //FIXME CFG + hash
 	return cp;
 
         printf("OP_EXE: NOT IMPLEMENTED\n");	
@@ -1505,7 +1682,11 @@ normal:
 	}
 	cfg = mkHash(cp);
 	ccn_listen_for(cfg);
+#ifdef ABSTRACT_MACHINE
 	ccn_announce(cfg, cp);
+#else 
+        ccn_announce(ccnl, cfg, cp);
+#endif
 	return cp;
     
     }
@@ -1521,7 +1702,7 @@ normal:
 
 
 char*
-createDict(char *pairs[])
+createDict(struct ccnl_relay_s *ccnl, char *pairs[])
 {
     int i = 0;
     char buf[9000], *cname, *ename;
@@ -1532,16 +1713,24 @@ createDict(char *pairs[])
 //	sprintf(dummybuf, "CLO|hash003|%s", pairs[i+1]);
 	sprintf(dummybuf, "CLO||%s", pairs[i+1]);
 	cname = mkHash(dummybuf);
-	ccn_store(cname, dummybuf);
+#ifdef ABSTRACT_MACHINE
+        ccn_store(cname, dummybuf);
+#else
+        ccn_store(ccnl, cname, dummybuf);
+#endif
 	sprintf(buf+strlen(buf), "|%s|%s", pairs[i], cname);
 	i += 2;
     }
     ename = mkHash(buf);
-    ccn_store(ename, buf);
+#ifdef ABSTRACT_MACHINE
+        ccn_store(ename, buf);
+#else
+        ccn_store(ccnl, ename, buf);
+#endif
     return ename;
 }
 
-char *Krivine_reduction(char *expression){
+char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression){
 
     char *prog, *cp, *config;
     char *setup_env[] = {
@@ -1571,11 +1760,15 @@ char *Krivine_reduction(char *expression){
     int len = strlen("CLOSURE(halt);RESOLVENAME()") + strlen(expression);
     if(strlen(expression) == 0) return 0;
     prog = malloc(len*sizeof(char));
+#ifdef NFN_FOX
     sprintf(prog, "CLOSURE(halt);FOX(%s)", expression);
+#else
+    sprintf(prog, "CLOSURE(halt);RESOLVENAME(%s)", expression);
+#endif
     //prog = "CLOSURE(halt);RESOLVENAME((/x ( add ((/x add x 1) 3) x)) 7)";
 
     config = strdup(prog);
-    cp = global_dict = createDict(setup_env);
+    cp = global_dict = createDict(ccnl, setup_env);
     sprintf(dummybuf, "CFG|%s|||%s", cp, config);
     free(config);
     config = strdup(dummybuf);
@@ -1583,7 +1776,11 @@ char *Krivine_reduction(char *expression){
     cp = mkHash(config);
 
     ccn_listen_for(cp);
+#ifdef ABSTRACT_MACHINE
     ccn_store(cp, config);
+#else
+    ccn_store(ccnl, cp, config);
+#endif
    
     while (cs_trigger && steps < MAX_STEPS) {
 	steps++;
@@ -1592,12 +1789,16 @@ char *Krivine_reduction(char *expression){
 	cs_trigger = 0;
 	char *hash_name = cp;
 	printf("CP BEFORE: %s\n", cp);
-	cp = ZAM_term(cp);
+	cp = ZAM_term(ccnl, cp);
 	printf("CP AFTER:  %s\n", cp);
 	ccn_store_update(hash_name, cp);
 //	printf("post: %s\n", cp);
     }
+#ifdef ABSTRACT_MACHINE
     ccn_store(expression, cp); //ersetze durch richtigen hash eintrag
+#else
+    ccn_store(ccnl, expression, cp); //ersetze durch richtigen hash eintrag
+#endif
     return cp;
 }
 
@@ -1652,7 +1853,7 @@ main(int argc, char **argv)
     //printf("      christian.tschudin@unibas.ch, Jun 2013\n");
     
     ccn_store("((/x((add x) 1)) 3)", "RST|4");
-    res = Krivine_reduction(prog);
+    res = Krivine_reduction(NULL, prog);
 
     printf("\n res; %s\n\n", res);
 
