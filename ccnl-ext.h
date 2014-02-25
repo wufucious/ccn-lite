@@ -22,7 +22,7 @@
 
 // ----------------------------------------------------------------------
 
-#ifdef USE_CCNxDIGEST
+#ifdef USE_CCNxDIGEST 
 #  define compute_ccnx_digest(buf) SHA256(buf->data, buf->datalen, NULL)
 #else
 #  define compute_ccnx_digest(b) NULL

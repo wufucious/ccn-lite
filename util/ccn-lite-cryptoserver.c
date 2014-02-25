@@ -19,7 +19,7 @@
  * File history:
  * 2013-07-22 created <christopher.scherb@unibas.ch>
  */
-#define USE_SIGNATURES
+#ifdef USE_SIGNATURES
 
 #include "../ccnl.h"
 #include "../ccnx.h"
@@ -348,3 +348,10 @@ int main(int argc, char **argv)
     printf("Usage: %s crypto_ux_socket_path"
         " public_key [private_key]\n", argv[0]);
 }
+#else
+
+int main(int argc, char **argv)
+{
+    printf("NEED USE_SIGNATURES TO COMPILE CRYPTOSERVER");
+}
+#endif

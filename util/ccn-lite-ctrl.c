@@ -21,7 +21,6 @@
  * 2013-07     <christopher.scherb@unibas.ch> heavy reworking and parsing
  *             of return message
  */
-#define USE_SIGNATURES
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -718,6 +717,7 @@ make_next_seg_debug_interest(int num, char *out)
     
 }
 
+#ifdef USE_SIGNATURES
 int
 handle_ccn_signature(unsigned char **buf, int *buflen, char *relay_public_key)
 {
@@ -744,7 +744,7 @@ handle_ccn_signature(unsigned char **buf, int *buflen, char *relay_public_key)
     Bail:
     return verified;
 }
-
+#endif
 /**
  * Extract content, verify sig if public key is given as parameter
  * @param len
@@ -763,13 +763,14 @@ check_has_next(char *buf, int len, char **recvbuffer, int *recvbufferlen, char *
     if (typ != CCN_TT_DTAG || num != CCN_DTAG_CONTENTOBJ) return 0;
     
     if(dehead(&buf, &len, &num, &typ)) return 0; 
+#ifdef USE_SIGNATURES
     if(num == CCN_DTAG_SIGNATURE)
     {
         if (typ != CCN_TT_DTAG || num != CCN_DTAG_SIGNATURE) return 0;
         *verified = handle_ccn_signature(&buf,&len, relay_public_key);
         if(dehead(&buf, &len, &num, &typ)) return 0;
     }
-   
+#endif
     if (typ != CCN_TT_DTAG || num != CCNL_DTAG_FRAG) return 0;
     
     //check if there is a marker for the last segment

@@ -35,8 +35,9 @@
 
 #include "ccnl-common.c"
 
-#define USE_SIGNATURES
+#ifdef USE_SIGNATURES
 #include "ccnl-crypto.c"
+#endif
 
 
 char *ctrl_public_key = 0;
@@ -445,9 +446,11 @@ handle_ccn_content_obj(unsigned char **buf, int *len, int offset, FILE *stream){
             case CCN_DTAG_NAME:
                 handle_ccn_name(buf, len, offset+4, stream);
                 break;
+#ifdef USE_SIGNATURES
             case CCN_DTAG_SIGNATURE:
                 handle_ccn_signature(buf, len, offset+4, stream);
                 break;
+#endif
             case CCN_DTAG_CONTENT:
                 handle_ccn_content(buf, len, offset+4, stream);
                 break;

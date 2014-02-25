@@ -20,7 +20,6 @@
  * 2013-07-06  created
  */
 
-#define USE_SIGNATURES
 
 #include <ctype.h>
 #include <fcntl.h>

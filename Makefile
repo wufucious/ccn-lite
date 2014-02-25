@@ -2,7 +2,8 @@
 
 CC=gcc
 MYCFLAGS=-O3 -Wall -pedantic -std=c99 -g \
-	-D_XOPEN_SOURCE=500 -D_XOPEN_SOURCE_EXTENDED -Dlinux -O0
+	-D_XOPEN_SOURCE=500 -D_XOPEN_SOURCE_EXTENDED -Dlinux -O0 \
+	
 #MYCFLAGS= -Wall -g -O0
 EXTLIBS=  -lcrypto
 EXTMAKE=
@@ -45,7 +46,7 @@ ccn-lite-relay: ccn-lite-relay.c \
 	ccnl-ext-http.c \
 	ccnl-ext-sched.c ccnl-pdu.c ccnl-ext-frag.c ccnl-ext-mgmt.c \
 	ccnl-ext-crypto.c ccnl-ext-nfn.c Makefile
-	${CC} -o $@ ${MYCFLAGS} $< ${EXTLIBS}
+	${CC} -o $@ ${MYCFLAGS} $< ${EXTLIBS} -DUSE_SIGNATURES
 
 ccn-lite-simu: ccn-lite-simu.c \
 	Makefile ccnl-includes.h ccnl.h ccnl-core.h \
