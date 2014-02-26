@@ -45,6 +45,11 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
     char *res = Krivine_reduction(ccnl, str);
     //stores result if computed
     DEBUGMSG(2,"Computation finshed: %s\n", res);
-    
+    struct ccnl_content_s *c = malloc(sizeof(struct ccnl_content_s));
+    c->content = strdup(res);
+    c->contentlen = strlen(res);
+    c->name = prefix;
+    c->flags = CCNL_CONTENT_FLAGS_STATIC;
+    ccnl_content_add2cache(ccnl, c);
     return 0;
 }
