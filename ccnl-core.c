@@ -912,7 +912,11 @@ ccnl_core_RX_i_or_c(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
 //NFN PLUGIN CALL
 #ifdef CCNL_NFN
             if(!memcmp(p->comp[p->compcnt-1], "NFN", 3)){
-                ccnl_nfn(relay, buf, p, from);
+                struct ccnl_buf_s *buf2 = buf;
+                struct ccnl_prefix_s *p2 = p;
+                i = ccnl_interest_new(relay, from, &buf, &p, minsfx, maxsfx, &ppkd);
+                ccnl_interest_append_pending(i, from);
+                ccnl_nfn(relay, buf2, p2, from);
                 goto Done;
             }
 #endif /*CCNL_NFN*/

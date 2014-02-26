@@ -50,6 +50,13 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
     c->contentlen = strlen(res);
     c->name = prefix;
     c->flags = CCNL_CONTENT_FLAGS_STATIC;
+    c->pkt = malloc(sizeof(struct ccnl_buf_s));
+    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + strlen(res)); //TODO anständiges contentobj
+    b->datalen = strlen(res);
+    memcpy(b->data, res, strlen(res));
+    c->pkt = b;
+
     ccnl_content_add2cache(ccnl, c);
+    ccnl_content_serve_pending(ccnl,c);
     return 0;
 }
