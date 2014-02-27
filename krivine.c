@@ -1,14 +1,30 @@
 /*
- * krivine.c
- * a "Krivine lambda expression resolver" for CCN
+ * @f krivine.c
+ * @b a "Krivine lambda expression resolver" for CCN
  *
  * (C) 2013 <christian.tschudin@unibas.ch>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *
+ * add GPL text here
+ *
+ * 
  *
  * 2013-05-10 created
  * 2013-05-15 spooky hash fct added. Encoding still uses "hashXXX"
  *            instead of the hash bits (for readability during devl)
  * 2013-06-09 recursion works, tail-recursion too, now we have
- "            a simple read-eval loop
+ *            a simple read-eval loop
  */
 
 #include <ctype.h>
@@ -21,6 +37,9 @@
 
 #ifndef ABSTRACT_MACHINE
 #include "ccnl-core.h"
+#include "krivine-common.c"
+#include "ccnl.h"
+#include "ccnl-pdu.c"
 #endif
 
 
@@ -453,14 +472,12 @@ ccn_name2content(char *name)    // synchronous lookup of the (local?) CS
 char*
 ccn_name2content(struct ccnl_relay_s *ccnl, char *name)    // synchronous lookup of the (local?) CS
 {
-    int i;
-
 //    printf("ccn_name2content(%s)\n", name);
     struct ccnl_content_s *c = ccnl->contents;
     if (!name)
 	return 0;
     for (c = ccnl->contents; c; c = c->next){
-        if (!strcmp(c->name->comp[0], name)){
+        if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
              return c->content;
         }
     }
@@ -496,22 +513,32 @@ ccn_store(struct ccnl_relay_s *ccnl, char *name, char *content)  // synchronous 
 {
     struct ccnl_content_s *c = malloc(sizeof(struct ccnl_content_s));
     struct ccnl_prefix_s *name_p = malloc(sizeof(struct ccnl_prefix_s ));
-    name_p->comp = malloc(sizeof(char*));
+    char out[CCNL_MAX_PACKET_SIZE];
+    int len = 0;
+    name_p->comp = malloc(sizeof(char*) * 2);
     name_p->comp[0] = strdup(name);
+    name_p->comp[1] = NULL;
     name_p->compcnt = 1;
     name_p->complen = malloc(sizeof(int));
     name_p->complen[0] = strlen(name);
+    c->name = name_p;
     c->content = strdup(content);
     c->contentlen = strlen(content);
-    c->name = name_p;
-    c->flags = CCNL_CONTENT_FLAGS_STATIC;
+    //c->flags = CCNL_CONTENT_FLAGS_STATIC;
+    
+    len = mkContent(name_p->comp, NULL, 0, content, strlen(content), out);
+    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
+    b->datalen = len;
+    memcpy(b->data, out, len);
+    c->pkt = b;
     ccnl_content_add2cache(ccnl, c);
     
 }
 #endif
 
+#ifdef ABSTRACT_MACHINE
 void
-ccn_store_update(char *name, char *content)  // synchronous add content to the CS
+ccn_store_update(char *name, char *content)
 {
     int i;
 //    printf("ccn_store(%s, %s)\n", name, content);
@@ -525,6 +552,33 @@ ccn_store_update(char *name, char *content)  // synchronous add content to the C
 	}
     }
 }
+#else
+void
+ccn_store_update(struct ccnl_relay_s *ccnl, char *name, char *content)
+{
+    struct ccnl_content_s *c = ccnl->contents;
+    char out[CCNL_MAX_PACKET_SIZE];
+    int len = 0;
+    if (!name)
+	return;
+    for (c = ccnl->contents; c; c = c->next){
+        if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
+            
+            free(c->content);
+            c->content = content;
+            
+            len = mkContent(c->name->comp, NULL, 0, content, strlen(content), out);
+            struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
+            b->datalen = len;
+            memcpy(b->data, out, len);
+            c->pkt = b;
+            
+            return;
+        }
+    }
+    return;
+}
+#endif
 
 void
 ccn_request(char *name)   // send an interest
@@ -1875,7 +1929,11 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression){
 	cs_trigger = 0;
 	char *hash_name = cp;
 	cp = ZAM_term(ccnl, cp);
+#ifdef ABSTRACT_MACHINE
 	ccn_store_update(hash_name, cp);
+#else
+        ccn_store_update(ccnl, hash_name, cp);
+#endif
 //	printf("post: %s\n", cp);
     }
 #ifdef ABSTRACT_MACHINE

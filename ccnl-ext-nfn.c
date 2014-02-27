@@ -35,6 +35,7 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
         DEBUGMSG(99, "  Thunk-request, currently not implementd\n"); 
     }
     char str[1000];
+    char out[CCNL_MAX_PACKET_SIZE];
     int i, len = 0;
     for(i = 0; i < prefix->compcnt-1; ++i){
         //DEBUGMSG(99, "%s\n", prefix->comp[i]);
@@ -50,10 +51,12 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
     c->contentlen = strlen(res);
     c->name = prefix;
     c->flags = CCNL_CONTENT_FLAGS_STATIC;
-    c->pkt = malloc(sizeof(struct ccnl_buf_s));
-    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + strlen(res)); //TODO anständiges contentobj
-    b->datalen = strlen(res);
-    memcpy(b->data, res, strlen(res));
+    
+    
+    len = mkContent(prefix->comp, NULL, 0, res, strlen(res), out); //FIXME: prefix->comp falsch?
+    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
+    b->datalen = len;
+    memcpy(b->data, out, len);
     c->pkt = b;
 
     ccnl_content_add2cache(ccnl, c);
