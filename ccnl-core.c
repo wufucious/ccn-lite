@@ -893,6 +893,7 @@ ccnl_core_RX_i_or_c(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
 		if (!ccnl_i_prefixof_c(p, ppkd, minsfx, maxsfx, c)) continue;
 		// FIXME: should check stale bit in aok here
 		DEBUGMSG(7, "  matching content for interest, content %p\n", (void *) c);
+                DEBUGMSG(7, "  Name %s, Request %s\n", c->name->comp[0], p->comp[0]);
 		ccnl_print_stats(relay, STAT_SND_C); //log sent_c
 		if (from->ifndx >= 0)
 		    ccnl_face_enqueue(relay, from, buf_dup(c->pkt));
