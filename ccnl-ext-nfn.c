@@ -35,30 +35,20 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
         DEBUGMSG(99, "  Thunk-request, currently not implementd\n"); 
     }
     char str[1000];
-    char out[CCNL_MAX_PACKET_SIZE];
+    
     int i, len = 0;
     for(i = 0; i < prefix->compcnt-1; ++i){
         //DEBUGMSG(99, "%s\n", prefix->comp[i]);
         len += sprintf(str + len, " %s", prefix->comp[i]);
     }
-    DEBUGMSG(99, "%s\n", str);
     //search for result here... if found return...
     char *res = Krivine_reduction(ccnl, str);
     //stores result if computed
     DEBUGMSG(2,"Computation finshed: %s\n", res);
-    struct ccnl_content_s *c = malloc(sizeof(struct ccnl_content_s));
-    c->content = strdup(res);
-    c->contentlen = strlen(res);
-    c->name = prefix;
+    
+    struct ccnl_content_s *c = add_computation_to_cache(ccnl, prefix, res, strlen(res));
+            
     c->flags = CCNL_CONTENT_FLAGS_STATIC;
-    
-    
-    len = mkContent(prefix->comp, NULL, 0, res, strlen(res), out); //FIXME: prefix->comp falsch?
-    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
-    b->datalen = len;
-    memcpy(b->data, out, len);
-    c->pkt = b;
-
     ccnl_content_add2cache(ccnl, c);
     ccnl_content_serve_pending(ccnl,c);
     return 0;

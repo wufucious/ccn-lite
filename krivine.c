@@ -40,6 +40,7 @@
 #include "krivine-common.c"
 #include "ccnl.h"
 #include "ccnl-pdu.c"
+#include "ccnl-ext-debug.c"
 #endif
 
 
@@ -511,28 +512,20 @@ ccn_store(char *name, char *content)  // synchronous add content to the CS
 void
 ccn_store(struct ccnl_relay_s *ccnl, char *name, char *content)  // synchronous add content to the CS
 {
-    struct ccnl_content_s *c = malloc(sizeof(struct ccnl_content_s));
+    struct ccnl_content_s *c;
     struct ccnl_prefix_s *name_p = malloc(sizeof(struct ccnl_prefix_s ));
-    char out[CCNL_MAX_PACKET_SIZE];
-    int len = 0;
+
     name_p->comp = malloc(sizeof(char*) * 2);
     name_p->comp[0] = strdup(name);
     name_p->comp[1] = NULL;
     name_p->compcnt = 1;
     name_p->complen = malloc(sizeof(int));
     name_p->complen[0] = strlen(name);
-    c->name = name_p;
-    c->content = strdup(content);
-    c->contentlen = strlen(content);
-    //c->flags = CCNL_CONTENT_FLAGS_STATIC;
-    
-    len = mkContent(name_p->comp, NULL, 0, content, strlen(content), out);
-    struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
-    b->datalen = len;
-    memcpy(b->data, out, len);
-    c->pkt = b;
+
+    c = add_computation_to_cache(ccnl, name_p, content, strlen(content));
+            
     ccnl_content_add2cache(ccnl, c);
-    
+    ccnl_content_serve_pending(ccnl,c);       
 }
 #endif
 

@@ -112,3 +112,28 @@ mkContent(char **namecomp,
 
     return len;
 }
+
+
+struct ccnl_content_s *
+add_computation_to_cache(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *prefix,
+        char *res, int reslen){
+ 
+    char *out = ccnl_malloc(CCNL_MAX_PACKET_SIZE);
+    memset(out, CCNL_MAX_PACKET_SIZE, 0);
+    int len = mkContent(prefix->comp, NULL, 0, res, reslen, out);
+    
+    
+    int rc= -1, scope=3, aok=3, minsfx=0, maxsfx=CCNL_MAX_NAME_COMP, contlen;
+    struct ccnl_buf_s *buf = 0, *nonce=0, *ppkd=0;
+    
+    struct ccnl_content_s *c = 0;
+    struct ccnl_prefix_s *p = 0;
+    unsigned char *content = 0;
+    int num; int typ;
+    dehead(&out, &len, &num, &typ);
+    buf = ccnl_extract_prefix_nonce_ppkd(&out, &len, &scope, &aok, &minsfx,
+			 &maxsfx, &p, &nonce, &ppkd, &content, &contlen);    
+    
+    c = ccnl_content_new(ccnl, &buf, &p, &ppkd, content, contlen);
+    return c;
+}
