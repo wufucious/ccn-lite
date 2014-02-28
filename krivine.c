@@ -474,6 +474,32 @@ char*
 ccn_name2content(struct ccnl_relay_s *ccnl, char *name)    // synchronous lookup of the (local?) CS
 {
 //    printf("ccn_name2content(%s)\n", name);
+       
+   
+    //look in network
+    /*char *out = malloc(CCNL_MAX_PACKET_SIZE);
+    char **namecomp = malloc(sizeof(char*) * 2);
+    namecomp[0] = strdup(name);
+    namecomp[1] = 0;
+    int len = mkInterest(namecomp, NULL, &out);
+    struct ccnl_interest_s *i = 0;
+    int rc= -1, scope=3, aok=3, minsfx=0, maxsfx=CCNL_MAX_NAME_COMP, contlen;
+    struct ccnl_buf_s *buf = 0, *nonce=0, *ppkd=0;
+    
+    struct ccnl_prefix_s *p = 0;
+    unsigned char *content = 0;
+    int num; int typ;
+    dehead(&out, &len, &num, &typ);
+    buf = ccnl_extract_prefix_nonce_ppkd(&out, &len, &scope, &aok, &minsfx,
+			 &maxsfx, &p, &nonce, &ppkd, &content, &contlen);
+    
+    struct ccnl_face_s * from = malloc(sizeof(struct ccnl_face_s *));
+    from->faceid = 0;
+    i = ccnl_interest_new(ccnl, from, &buf, &p, minsfx, maxsfx, &ppkd);
+    ccnl_interest_propagate(ccnl, i);
+    
+    */
+     //look local //TODO: put on the top!
     struct ccnl_content_s *c = ccnl->contents;
     if (!name)
 	return 0;
@@ -482,8 +508,10 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name)    // synchronous lookup
              return c->content;
         }
     }
+    
     return 0;
 }
+
 #endif
 
 #ifdef ABSTRACT_MACHINE
@@ -585,7 +613,7 @@ ccn_announce(char *name, char *content)  // make new content available
 {
 //    printf("ccn_announce(%s, %s)\n", name, content);
 
-    ccn_store(name, content);
+    //ccn_store(name, content);
 
 /*
     if (cs_in_name)
@@ -601,7 +629,7 @@ ccn_announce(struct ccnl_relay_s *ccnl, char *name, char *content)  // make new 
 {
 //    printf("ccn_announce(%s, %s)\n", name, content);
 
-    ccn_store(ccnl, name, content);
+    //ccn_store(ccnl, name, content);
 
 /*
     if (cs_in_name)
@@ -1032,9 +1060,9 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 
     if (strncmp(cfg, "CFG", 3)) {
 #ifdef ABSTRACT_MACHINE
-	cfg = ccn_name2content(cfg); // resolve the hash
+	//cfg = ccn_name2content(cfg); // resolve the hash
 #else
-        cfg = ccn_name2content(ccnl, cfg);
+        //cfg = ccn_name2content(ccnl, cfg);
 #endif
     }
     DEBUGMSG(1, "---ZAM_term exec \"%s\"\n", cfg);
@@ -1906,31 +1934,33 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression){
     config = strdup(dummybuf);
 
     cp = mkHash(config);
-
+    cp = config;
     ccn_listen_for(cp);
 #ifdef ABSTRACT_MACHINE
     ccn_store(cp, config);
 #else
-    ccn_store(ccnl, cp, config);
+   // ccn_store(ccnl, cp, config);
 #endif
     while (cs_trigger && steps < MAX_STEPS) {
 	steps++;
 	DEBUGMSG(1, "Step %d: %s\n", steps, cs_trigger);
-	cp = cs_trigger;
+	//cp = cs_trigger;
 	cs_trigger = 0;
-	char *hash_name = cp;
+	char *hash_name = mkHash(cp);
+        //TODO: if hash not found compute
 	cp = ZAM_term(ccnl, cp);
+        DEBUGMSG(1, "AFTER ZAM <--> CP: %s \n", cp);
 #ifdef ABSTRACT_MACHINE
-	ccn_store_update(hash_name, cp);
+	ccn_store(hash_name, cp);
 #else
-        ccn_store_update(ccnl, hash_name, cp);
+        ccn_store(ccnl, hash_name, cp);
 #endif
 //	printf("post: %s\n", cp);
     }
 #ifdef ABSTRACT_MACHINE
     ccn_store(expression, cp); //ersetze durch richtigen hash eintrag
 #else
-    ccn_store(ccnl, expression, cp); //ersetze durch richtigen hash eintrag
+    //ccn_store(ccnl, expression, cp); //ersetze durch richtigen hash eintrag
 #endif
     return cp;
 }
