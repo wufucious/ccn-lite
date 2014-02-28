@@ -557,15 +557,13 @@ ccn_store_update(struct ccnl_relay_s *ccnl, char *name, char *content)
     for (c = ccnl->contents; c; c = c->next){
         if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
             
-            free(c->content);
-            c->content = content;
+            struct ccnl_prefix_s *p = c->name;
             
-            len = mkContent(c->name->comp, NULL, 0, content, strlen(content), out);
-            struct ccnl_buf_s *b = (struct ccnl_buf_s *) ccnl_malloc(sizeof(*b) + len); //TODO anständiges contentobj
-            b->datalen = len;
-            memcpy(b->data, out, len);
-            c->pkt = b;
+            struct ccnl_content_s *d = add_computation_to_cache(ccnl, p, content, strlen(content));
             
+            
+            ccnl_content_remove(ccnl, c);
+            DEBUGMSG(99, "UPDATED: %s: %s --> %s\n", name, c->content, d->content);
             return;
         }
     }
