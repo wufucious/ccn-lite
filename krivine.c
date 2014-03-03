@@ -59,6 +59,7 @@
 int debug_level;
 
 #endif
+
 struct term_s {
     char *v;
     struct term_s *m, *n;
@@ -470,18 +471,26 @@ ccn_name2content(char *name)    // synchronous lookup of the (local?) CS
     return 0;
 }
 #else
+
 char*
-ccn_name2content(struct ccnl_relay_s *ccnl, char *name)    // synchronous lookup of the (local?) CS
+ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
 {
 //    printf("ccn_name2content(%s)\n", name);
-       
-   
+      struct ccnl_content_s *c = ccnl->contents;
+    if (!name)
+	return 0;
+    for (c = ccnl->contents; c; c = c->next){
+        if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
+             return c->content;
+        }
+    } 
+   //FIXME: COMMMENT
     //look in network
-    /*char *out = malloc(CCNL_MAX_PACKET_SIZE);
+    char *out = malloc(CCNL_MAX_PACKET_SIZE);
     char **namecomp = malloc(sizeof(char*) * 2);
     namecomp[0] = strdup(name);
     namecomp[1] = 0;
-    int len = mkInterest(namecomp, NULL, &out);
+    int len = mkInterest(namecomp, NULL, out);
     struct ccnl_interest_s *i = 0;
     int rc= -1, scope=3, aok=3, minsfx=0, maxsfx=CCNL_MAX_NAME_COMP, contlen;
     struct ccnl_buf_s *buf = 0, *nonce=0, *ppkd=0;
@@ -494,20 +503,11 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name)    // synchronous lookup
 			 &maxsfx, &p, &nonce, &ppkd, &content, &contlen);
     
     struct ccnl_face_s * from = malloc(sizeof(struct ccnl_face_s *));
-    from->faceid = 0;
-    i = ccnl_interest_new(ccnl, from, &buf, &p, minsfx, maxsfx, &ppkd);
-    ccnl_interest_propagate(ccnl, i);
+    from->faceid = NFN_FACE;
     
-    */
-     //look local //TODO: put on the top!
-    struct ccnl_content_s *c = ccnl->contents;
-    if (!name)
-	return 0;
-    for (c = ccnl->contents; c; c = c->next){
-        if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
-             return c->content;
-        }
-    }
+    i = ccnl_interest_new(ccnl, from, &buf, &p, minsfx, maxsfx, &ppkd);
+    i->comp_config = cur_cfg;
+    ccnl_interest_propagate(ccnl, i);
     
     return 0;
 }
@@ -554,48 +554,6 @@ ccn_store(struct ccnl_relay_s *ccnl, char *name, char *content)  // synchronous 
             
     ccnl_content_add2cache(ccnl, c);
     ccnl_content_serve_pending(ccnl,c);       
-}
-#endif
-
-#ifdef ABSTRACT_MACHINE
-void
-ccn_store_update(char *name, char *content)
-{
-    int i;
-//    printf("ccn_store(%s, %s)\n", name, content);
-    for (i = 0; i < cs_cnt; i++) {
-	if (!strcmp(name, cs[i].name)) {
-	    if (strcmp(content, cs[i].content)){
-		free(cs[i].content);
-    		cs[i].content = strdup(content);
-	    }
-	    return;
-	}
-    }
-}
-#else
-void
-ccn_store_update(struct ccnl_relay_s *ccnl, char *name, char *content)
-{
-    struct ccnl_content_s *c = ccnl->contents;
-    char out[CCNL_MAX_PACKET_SIZE];
-    int len = 0;
-    if (!name)
-	return;
-    for (c = ccnl->contents; c; c = c->next){
-        if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
-            
-            struct ccnl_prefix_s *p = c->name;
-            
-            struct ccnl_content_s *d = add_computation_to_cache(ccnl, p, content, strlen(content));
-            
-            
-            ccnl_content_remove(ccnl, c);
-            DEBUGMSG(99, "UPDATED: %s: %s --> %s\n", name, c->content, d->content);
-            return;
-        }
-    }
-    return;
 }
 #endif
 
@@ -991,14 +949,14 @@ env_find(char *env, char *v)
     return 0;
 }
 
-int pop1int(struct ccnl_relay_s *ccnl, char **tail, char *stackname)
+int pop1int(struct ccnl_relay_s *ccnl, char **tail, char *stackname, char *cur_cfg)
 {
 
     char *a1, *cp;
 #ifdef ABSTRACT_MACHINE
     cp = ccn_name2content(stackname); // should be split operation
 #else
-    cp = ccn_name2content(ccnl, stackname); // should be split operation
+    cp = ccn_name2content(ccnl, stackname, cur_cfg); // should be split operation
 #endif
     a1 = strchr(cp, '|');
 
@@ -1012,13 +970,13 @@ int pop1int(struct ccnl_relay_s *ccnl, char **tail, char *stackname)
 }
 
 int
-pop2int(struct ccnl_relay_s *ccnl, char **tail, char *stackname, int *i1, int *i2)
+pop2int(struct ccnl_relay_s *ccnl, char **tail, char *stackname, int *i1, int *i2, char *cur_cfg)
 {
     char *a1 = 0, *a2 = 0, *cp;
 #ifdef ABSTRACT_MACHINE
     cp = ccn_name2content(stackname); // should be split operation
 #else
-    cp = ccn_name2content(ccnl, stackname); // should be split operation
+    cp = ccn_name2content(ccnl, stackname, cur_cfg); // should be split operation
 #endif
     a1 = strchr(cp, '|');
     if (a1)
@@ -1060,23 +1018,22 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 
     if (strncmp(cfg, "CFG", 3)) {
 #ifdef ABSTRACT_MACHINE
-	//cfg = ccn_name2content(cfg); // resolve the hash
+	cfg = ccn_name2content(cfg); // resolve the hash
 #else
-        //cfg = ccn_name2content(ccnl, cfg);
+        cfg = ccn_name2content(ccnl, cfg, cfg);
 #endif
     }
     DEBUGMSG(1, "---ZAM_term exec \"%s\"\n", cfg);
 
     if (str2config(cfg, &en, &astack, &rstack, &prog))
 	return NULL;
-
     if (!prog || strlen(prog) == 0) {
 	cp = 0;
 	if (rstack)
 #ifdef ABSTRACT_MACHINE
 	    cp = ccn_name2content(rstack); // resolve the hash
 #else
-            cp = ccn_name2content(ccnl, rstack);
+            cp = ccn_name2content(ccnl, rstack, cfg);
 #endif
 	printf("nothing left to do, ");
 	if (cp)
@@ -1106,7 +1063,7 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 #ifdef ABSTRACT_MACHINE
 	env = ccn_name2content(en); // should be split operation
 #else
-        env = ccn_name2content(ccnl, en);
+        env = ccn_name2content(ccnl, en, cfg);
 #endif
 //	printf("  >fox(env:%s) --> %s\n", en, env);
 
@@ -1115,7 +1072,7 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 #ifdef ABSTRACT_MACHINE
 	    env = ccn_name2content(global_dict);
 #else
-            env = ccn_name2content(ccnl, global_dict); 
+            env = ccn_name2content(ccnl, global_dict, cfg); 
 #endif
 	    cname = env_find(env, cp);
 	    if (!cname) {
@@ -1171,7 +1128,7 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 #ifdef ABSTRACT_MACHINE
 	    char *e = ccn_name2content(en); // should be split operation
 #else
-            char *e = ccn_name2content(ccnl,en); 
+            char *e = ccn_name2content(ccnl, en, cfg); 
 #endif
 	    int len;
 
@@ -1185,7 +1142,7 @@ ZAM_term(struct ccnl_relay_s *ccnl, char *cfg) // written as forth approach
 #ifdef ABSTRACT_MACHINE
 	    cl = ccn_name2content(cname);
 #else
-            cl = ccn_name2content(ccnl, cname);
+            cl = ccn_name2content(ccnl, cname, cfg);
 #endif
 	    c = strchr(cl+4, '|'); if (!c) goto normal;
 //	    printf("testing tail recursion: %s %s\n", c+1, cp);
@@ -1244,7 +1201,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(astack); // should be split operation
 #else
-        cp = ccn_name2content(ccnl, astack);
+        cp = ccn_name2content(ccnl, astack, cfg);
 #endif
 //	printf("  >fox(stk:%s) --> %s\n", sn, cp);
 	str2stack(cp, &cname, &tailname);
@@ -1254,7 +1211,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	    env = en ? ccn_name2content(en) : 0;
 #else
-            env = en ? ccn_name2content(ccnl, en) : 0;
+            env = en ? ccn_name2content(ccnl, en, cfg) : 0;
 #endif
 	    cp = env2str(&en2, env, v, cname);
 	    if (cp)
@@ -1287,7 +1244,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(astack); // should be split operation
 #else
-        cp = ccn_name2content(ccnl, astack); // should be split operation
+        cp = ccn_name2content(ccnl, astack, cfg); // should be split operation
 #endif
 //	printf("  >fox(stk:%s) --> %s\n", sn, cp);
 //	printf(" content=%s\n", cp);
@@ -1295,7 +1252,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(cname);
 #else
-        cp = ccn_name2content(ccnl, cname);
+        cp = ccn_name2content(ccnl, cname, cfg);
 #endif
 //	printf(" content=%s\n", cp);
 	str2closure(cp, &env, &code);
@@ -1322,7 +1279,6 @@ normal:
 	    cp = pending-1;
 	else
 	    cp = prog + strlen(prog) - 1;
-
 	len = cp - p;
 	cp = malloc(len);
 	memcpy(cp, p+1, len-1);
@@ -1356,7 +1312,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 		    end = ccn_name2content(rstack); // should be split operation
 #else
-                    end = ccn_name2content(ccnl, rstack); // should be split operation
+                    end = ccn_name2content(ccnl, rstack, cfg); // should be split operation
 #endif
 //		    printf("resstack=%s\n", end);
 		    if (end)
@@ -1463,7 +1419,7 @@ normal:
 	int i1, i2, acc;
 
 	DEBUGMSG(2, "---to do: OP_CMPEQ <%s>/<%s>\n", cp, pending);
-	pop2int(ccnl, &cp, rstack, &i2, &i1);
+	pop2int(ccnl, &cp, rstack, &i2, &i1, cfg);
 	acc = i1 == i2;
 
 	cp = resstack2str(&rstack, cp, "");
@@ -1495,7 +1451,7 @@ normal:
 	int i1, i2, acc;
 
 	DEBUGMSG(2, "---to do: OP_CMPLEQ <%s>/%s\n", cp, pending);
-	pop2int(ccnl, &cp, rstack, &i2, &i1);
+	pop2int(ccnl, &cp, rstack, &i2, &i1, cfg);
 	acc = i1 <= i2;
 
 	cp = resstack2str(&rstack, cp, "");
@@ -1527,7 +1483,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(rstack); // should be split operation
 #else 
-        cp = ccn_name2content(ccnl, rstack); 
+        cp = ccn_name2content(ccnl, rstack, cfg); 
 #endif
 	DEBUGMSG(2, "---to do: OP_NIL <%s>\n", cp);
 	cp = resstack2str(&rstack, "NIL", cp ? cp+4 : 0);
@@ -1572,7 +1528,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(rstack); // should be split operation
 #else
-        cp = ccn_name2content(ccnl, rstack); 
+        cp = ccn_name2content(ccnl, rstack, cfg); 
 #endif
 	DEBUGMSG(2, "---to do: OP_POP <%s>\n", cp);
 	if (cp) {
@@ -1610,7 +1566,7 @@ normal:
 	int i1, i2;
 
 	DEBUGMSG(2, "---to do: OP_SUB <%s>\n", prog+8);
-	pop2int(ccnl, &cp, rstack, &i2, &i1);
+	pop2int(ccnl, &cp, rstack, &i2, &i1, cfg);
 	sprintf(dummybuf, "%d", i1 - i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
@@ -1638,7 +1594,7 @@ normal:
 	int i1, i2;
 
 	DEBUGMSG(2, "---to do: OP_ADD <%s>\n", prog+7);
-	pop2int(ccnl, &cp, rstack, &i2, &i1);
+	pop2int(ccnl, &cp, rstack, &i2, &i1, cfg);
 	sprintf(dummybuf, "%d", i1 + i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
@@ -1667,7 +1623,7 @@ normal:
 	int i1, i2;
 
 	DEBUGMSG(2, "---to do: OP_MULT <%s>\n", prog+8);
-	pop2int(ccnl, &cp, rstack, &i2, &i1);
+	pop2int(ccnl, &cp, rstack, &i2, &i1, cfg);
 	sprintf(dummybuf, "%d", i1 * i2);
 	cp = resstack2str(&rstack, dummybuf, cp);
 	if (cp)
@@ -1695,7 +1651,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(rstack); // should be split operation
 #else
-        cp = ccn_name2content(ccnl, rstack); // should be split operation
+        cp = ccn_name2content(ccnl, rstack, cfg); // should be split operation
 #endif 
 	DEBUGMSG(2, "---to do: OP_STACK\n");
 	if (cp)
@@ -1717,7 +1673,7 @@ normal:
 
     if(!strncmp(prog, "OP_CALL", 5)){
 
-	int num_params = pop1int(ccnl, &cp, rstack);
+	int num_params = pop1int(ccnl, &cp, rstack, cfg);
         int i, offset;
 	char name[5];
 //	printf("numparams: %d", num_params);
@@ -1752,7 +1708,7 @@ normal:
     if(!strncmp(prog, "OP_EXE(", 4)){
     	
 	printf("cp: %s \n", cp);
-	int num_params = pop1int(ccnl, &cp, rstack), i;
+	int num_params = pop1int(ccnl, &cp, rstack, cfg), i;
 	cp = config2str(&cfg, en, astack, rstack, cp);
 	char **params = malloc(sizeof(char * ) * num_params); 
 
@@ -1761,7 +1717,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
 	cp = ccn_name2content(rstack); // should be split operation
 #else
-        cp = ccn_name2content(ccnl, rstack);
+        cp = ccn_name2content(ccnl, rstack, cfg);
 #endif
         char *a1 = strchr(cp, '|');
         a1 = strchr(a1+1, '|');
@@ -1852,7 +1808,7 @@ normal:
 #ifdef ABSTRACT_MACHINE
         return ccn_name2content(rstack);
 #else
-        return ccn_name2content(ccnl, rstack); 
+        return ccn_name2content(ccnl, rstack, cfg); 
 #endif
     }
 
@@ -1890,8 +1846,7 @@ createDict(struct ccnl_relay_s *ccnl, char *pairs[])
     return ename;
 }
 
-char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression){
-
+char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int compute){
     char *prog, *cp, *config;
     char *setup_env[] = {
 	"true", "RESOLVENAME(/x/y x)",
@@ -1947,21 +1902,27 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression){
 	//cp = cs_trigger;
 	cs_trigger = 0;
 	char *hash_name = mkHash(cp);
-        //TODO: if hash not found compute
-	cp = ZAM_term(ccnl, cp);
-        DEBUGMSG(1, "AFTER ZAM <--> CP: %s \n", cp);
 #ifdef ABSTRACT_MACHINE
-	ccn_store(hash_name, cp);
+        char *nwt = ccn_name2content(hash_name);
 #else
-        ccn_store(ccnl, hash_name, cp);
+        char *nwt = ccn_name2content(ccnl, hash_name, cp);
 #endif
-//	printf("post: %s\n", cp);
-    }
+        if(!compute && !nwt) return;
+        //TODO: if hash not found compute
+        else if(compute){
+                cp = ZAM_term(ccnl, cp);
 #ifdef ABSTRACT_MACHINE
+                ccn_store(hash_name, cp);
+#else
+                ccn_store(ccnl, hash_name, cp);
+#endif
+        }
+    }
+/*#ifdef ABSTRACT_MACHINE
     ccn_store(expression, cp); //ersetze durch richtigen hash eintrag
 #else
     //ccn_store(ccnl, expression, cp); //ersetze durch richtigen hash eintrag
-#endif
+#endif*/
     return cp;
 }
 
@@ -2016,7 +1977,7 @@ main(int argc, char **argv)
     //printf("      christian.tschudin@unibas.ch, Jun 2013\n");
     
     ccn_store("((/x((add x) 1)) 3)", "RST|4");
-    res = Krivine_reduction(NULL, prog);
+    res = Krivine_reduction(NULL, prog, 1);
 
     printf("\n res; %s\n\n", res);
 

@@ -918,7 +918,7 @@ ccnl_core_RX_i_or_c(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
                 struct ccnl_prefix_s *p2 = p;
                 i = ccnl_interest_new(relay, from, &buf, &p, minsfx, maxsfx, &ppkd);
                 ccnl_interest_append_pending(i, from);
-                ccnl_nfn(relay, buf2, p2, from);
+                ccnl_nfn(relay, buf2, p2, from, 0);
                 goto Done;
             }
 #endif /*CCNL_NFN*/

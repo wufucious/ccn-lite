@@ -25,8 +25,13 @@
 #include "krivine.c"
 
 int 
+ccnl_nfn_resume_comp(){
+    
+}
+
+int 
 ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
-	  struct ccnl_prefix_s *prefix, struct ccnl_face_s *from)
+	  struct ccnl_prefix_s *prefix, struct ccnl_face_s *from, int compute)
 {
     DEBUGMSG(49, "ccnl_nfn(%p, %p, %p, %p)\n", ccnl, orig, prefix, from);
     DEBUGMSG(99, "NFN-engine\n"); 
@@ -42,14 +47,15 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
         len += sprintf(str + len, " %s", prefix->comp[i]);
     }
     //search for result here... if found return...
-    char *res = Krivine_reduction(ccnl, str);
+    char *res = Krivine_reduction(ccnl, str, compute);
     //stores result if computed
     DEBUGMSG(2,"Computation finshed: %s\n", res);
-    
-    struct ccnl_content_s *c = add_computation_to_cache(ccnl, prefix, res, strlen(res));
+    if(res){
+        struct ccnl_content_s *c = add_computation_to_cache(ccnl, prefix, res, strlen(res));
             
-    c->flags = CCNL_CONTENT_FLAGS_STATIC;
-    ccnl_content_add2cache(ccnl, c);
-    ccnl_content_serve_pending(ccnl,c);
+        c->flags = CCNL_CONTENT_FLAGS_STATIC;
+        ccnl_content_add2cache(ccnl, c);
+        ccnl_content_serve_pending(ccnl,c);
+    }
     return 0;
 }

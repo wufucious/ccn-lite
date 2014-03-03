@@ -22,7 +22,12 @@
 
 // ----------------------------------------------------------------------
 
+#ifndef KRIVINE_COMMON_C
+#define KRIVINE_COMMON_C
+
 #include "ccnl-pdu.c"
+
+#define NFN_FACE -1
 
 int
 hex2int(char c)
@@ -139,3 +144,5 @@ add_computation_to_cache(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *prefix
     c = ccnl_content_new(ccnl, &buf, &p, &ppkd, content, contlen);
     return c;
 }
+#endif //KRIVINE_COMMON_C
+//eof
