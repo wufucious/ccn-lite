@@ -19,6 +19,9 @@
  * File history:
  * 2014-02-06 <christopher.scherb@unibas.ch>created 
  */
+#ifndef CCNL_EXT_NFN_C
+#define CCNL_EXT_NFN_C
+
 
 #include "ccnl-core.h"
 
@@ -49,8 +52,9 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
     //search for result here... if found return...
     char *res = Krivine_reduction(ccnl, str, compute);
     //stores result if computed
-    DEBUGMSG(2,"Computation finshed: %s\n", res);
+    
     if(res){
+        DEBUGMSG(2,"Computation finshed: %s\n", res);
         struct ccnl_content_s *c = add_computation_to_cache(ccnl, prefix, res, strlen(res));
             
         c->flags = CCNL_CONTENT_FLAGS_STATIC;
@@ -59,3 +63,5 @@ ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig,
     }
     return 0;
 }
+
+#endif

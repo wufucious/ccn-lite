@@ -89,7 +89,7 @@ done:
 static int consume(int typ, int num, unsigned char **buf, int *len,
 		   unsigned char **valptr, int *vallen);
 
-static int
+int
 dehead(unsigned char **buf, int *len, int *num, int *typ)
 {
     int i;
@@ -585,7 +585,6 @@ ccnl_interest_new(struct ccnl_relay_s *ccnl, struct ccnl_face_s *from,
     struct ccnl_interest_s *i = (struct ccnl_interest_s *) ccnl_calloc(1,
 					    sizeof(struct ccnl_interest_s));
     DEBUGMSG(99, "ccnl_new_interest\n");
-
     if (!i)
 	return NULL;
     i->from = from;
@@ -795,6 +794,10 @@ ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     return cnt;
 }
 
+#ifdef CCNL_NFN
+#include "krivine.c"
+#endif
+
 void
 ccnl_do_ageing(void *ptr, void *dummy)
 {
@@ -815,8 +818,16 @@ ccnl_do_ageing(void *ptr, void *dummy)
     while (i) { // CONFORM: "Entries in the PIT MUST timeout rather
 		// than being held indefinitely."
 	if ((i->last_used + CCNL_INTEREST_TIMEOUT) <= t ||
-				i->retries > CCNL_MAX_INTEREST_RETRANSMIT)
+				i->retries > CCNL_MAX_INTEREST_RETRANSMIT){
+#ifdef CCNL_NFN
+            if(i->from->faceid == -1){
+                DEBUGMSG(99, "TIMEOUT --> Start computation: %s\n", i->comp_config);
+                Krivine_reduction(relay, strdup(i->comp_config), 1);
+            }
+#endif CCNL_NFN
 	    i = ccnl_interest_remove(relay, i);
+            
+        }
 	else {
 	    // CONFORM: "A node MUST retransmit Interest Messages
 	    // periodically for pending PIT entries."

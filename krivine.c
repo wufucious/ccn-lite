@@ -27,6 +27,11 @@
  *            a simple read-eval loop
  */
 
+#ifndef KRIVINE_C
+#define KRIVINE_C
+
+#define NFN_FACE -1
+
 #include <ctype.h>
 #include <getopt.h>
 #include <stdio.h>
@@ -447,11 +452,11 @@ ccn_listen_for(char *name)  // install a trigger
 {
 //    printf("ccn_listen_for(%s)\n", name);
 
-    if (cs_trigger)
+    /*if (cs_trigger)
 	printf("ERROR: cs_trigger already set to %s, new request %s ignored\n",
 	       cs_trigger, name);
     else
-	cs_trigger = name;
+	cs_trigger = name;*/
 }
 
 #ifdef ABSTRACT_MACHINE
@@ -490,7 +495,7 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
     char **namecomp = malloc(sizeof(char*) * 2);
     namecomp[0] = strdup(name);
     namecomp[1] = 0;
-    int len = mkInterest(namecomp, NULL, out);
+    int len = mkInterest(namecomp, "NFN", out);
     struct ccnl_interest_s *i = 0;
     int rc= -1, scope=3, aok=3, minsfx=0, maxsfx=CCNL_MAX_NAME_COMP, contlen;
     struct ccnl_buf_s *buf = 0, *nonce=0, *ppkd=0;
@@ -502,12 +507,14 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
     buf = ccnl_extract_prefix_nonce_ppkd(&out, &len, &scope, &aok, &minsfx,
 			 &maxsfx, &p, &nonce, &ppkd, &content, &contlen);
     
-    struct ccnl_face_s * from = malloc(sizeof(struct ccnl_face_s *));
+    struct ccnl_face_s * from = ccnl_malloc(sizeof(struct ccnl_face_s *));
     from->faceid = NFN_FACE;
-    
+    from->last_used = CCNL_NOW();
     i = ccnl_interest_new(ccnl, from, &buf, &p, minsfx, maxsfx, &ppkd);
+    
     i->comp_config = cur_cfg;
     ccnl_interest_propagate(ccnl, i);
+    ccnl_interest_append_pending(i, from);
     
     return 0;
 }
@@ -1846,75 +1853,98 @@ createDict(struct ccnl_relay_s *ccnl, char *pairs[])
     return ename;
 }
 
+
 char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int compute){
     char *prog, *cp, *config;
-    char *setup_env[] = {
-	"true", "RESOLVENAME(/x/y x)",
-	"false", "RESOLVENAME(/x/y y)",
 
-	"eq", "CLOSURE(OP_CMPEQ);RESOLVENAME(/op(/x(/y x y op)))",
-	"leq", "CLOSURE(OP_CMPLEQ);RESOLVENAME(/op/x/y x y op)",
-	"ifelse", "RESOLVENAME(/expr/yes/no(expr yes no))",
-	"nop", "OP_NOP;TAILAPPLY",
-	"nil", "OP_NIL;TAILAPPLY",
-	"pop", "OP_POP;TAILAPPLY",
-	"=", "OP_PRINTSTACK;TAILAPPLY",
+    if(!global_dict){
+        
+        char *setup_env[] = {
+            "true", "RESOLVENAME(/x/y x)",
+            "false", "RESOLVENAME(/x/y y)",
 
-	"add", "CLOSURE(OP_ADD);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
-	"sub", "CLOSURE(OP_SUB);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
-	"mult", "CLOSURE(OP_MULT);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
-	"call", "CLOSURE(OP_CALL);RESOLVENAME(/op(/x x op));TAILAPPLY",
+            "eq", "CLOSURE(OP_CMPEQ);RESOLVENAME(/op(/x(/y x y op)))",
+            "leq", "CLOSURE(OP_CMPLEQ);RESOLVENAME(/op/x/y x y op)",
+            "ifelse", "RESOLVENAME(/expr/yes/no(expr yes no))",
+            "nop", "OP_NOP;TAILAPPLY",
+            "nil", "OP_NIL;TAILAPPLY",
+            "pop", "OP_POP;TAILAPPLY",
+            "=", "OP_PRINTSTACK;TAILAPPLY",
 
-	"factprime", "RESOLVENAME(/f/n (ifelse (leq n 1) 1 (mult n ((f f)(sub n 1))) ))",
-	"fact", "RESOLVENAME(factprime factprime)",
+            "add", "CLOSURE(OP_ADD);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
+            "sub", "CLOSURE(OP_SUB);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
+            "mult", "CLOSURE(OP_MULT);RESOLVENAME(/op(/x(/y x y op)));TAILAPPLY",
+            "call", "CLOSURE(OP_CALL);RESOLVENAME(/op(/x x op));TAILAPPLY",
 
-	"sha256", "RESOLVENAME(/c 42)",
+            "factprime", "RESOLVENAME(/f/n (ifelse (leq n 1) 1 (mult n ((f f)(sub n 1))) ))",
+            "fact", "RESOLVENAME(factprime factprime)",
 
-	0
-    };
-    int len = strlen("CLOSURE(halt);RESOLVENAME()") + strlen(expression);
-    if(strlen(expression) == 0) return 0;
-    prog = malloc(len*sizeof(char));
+            "sha256", "RESOLVENAME(/c 42)",
+
+            0
+        };
+        global_dict = createDict(ccnl, setup_env);
+    }
+   
+    if(strncmp(expression, "CFG", 3)){ //for init
+        int len = strlen("CLOSURE(halt);RESOLVENAME()") + strlen(expression);
+        if(strlen(expression) == 0) return 0;
+        prog = malloc(len*sizeof(char));
+
 #ifdef NFN_FOX
-    sprintf(prog, "CLOSURE(halt);FOX(%s)", expression);
+            sprintf(prog, "CLOSURE(halt);FOX(%s)", expression);
 #else
-    sprintf(prog, "CLOSURE(halt);RESOLVENAME(%s)", expression);
+            sprintf(prog, "CLOSURE(halt);RESOLVENAME(%s)", expression);
 #endif
-    //prog = "CLOSURE(halt);RESOLVENAME((/x ( add ((/x add x 1) 3) x)) 7)";
 
-    config = strdup(prog);
-    cp = global_dict = createDict(ccnl, setup_env);
-    sprintf(dummybuf, "CFG|%s|||%s", cp, config);
-    free(config);
-    config = strdup(dummybuf);
+        //prog = "CLOSURE(halt);RESOLVENAME((/x ( add ((/x add x 1) 3) x)) 7)";
 
-    cp = mkHash(config);
-    cp = config;
-    ccn_listen_for(cp);
+        config = strdup(prog);
+        sprintf(dummybuf, "CFG|%s|||%s", global_dict, config);
+        free(config);
+        config = strdup(dummybuf);
+        cp = config;
+    }
+    else{
+        cp = expression;
+    }
+
+    //cp = mkHash(config);
+    
+    //ccn_listen_for(cp);
 #ifdef ABSTRACT_MACHINE
     ccn_store(cp, config);
 #else
    // ccn_store(ccnl, cp, config);
 #endif
-    while (cs_trigger && steps < MAX_STEPS) {
+    DEBUGMSG(99, "COMPUTE1: %d, %s \n", compute, cp);
+    while (cp && steps < MAX_STEPS) {
 	steps++;
-	DEBUGMSG(1, "Step %d: %s\n", steps, cs_trigger);
+        if(!strncmp(cp, "RST|", 4)){
+                return cp;
+        }
+	DEBUGMSG(1, "Step %d: %s\n", steps, cp);
 	//cp = cs_trigger;
-	cs_trigger = 0;
 	char *hash_name = mkHash(cp);
+        DEBUGMSG(99, "COMPUTE2: %d, %s \n", compute, cp);
+        if(!compute){
 #ifdef ABSTRACT_MACHINE
-        char *nwt = ccn_name2content(hash_name);
+                char *nwt = ccn_name2content(hash_name);
 #else
-        char *nwt = ccn_name2content(ccnl, hash_name, cp);
+                char *nwt = ccn_name2content(ccnl, hash_name, cp);
 #endif
-        if(!compute && !nwt) return;
-        //TODO: if hash not found compute
-        else if(compute){
-                cp = ZAM_term(ccnl, cp);
+                if(!nwt) return 0;
+        }
+        else{ //compute
+            //return and wait for results        
+                //if hash not found compute
+            cp = ZAM_term(ccnl, cp);
+            
 #ifdef ABSTRACT_MACHINE
-                ccn_store(hash_name, cp);
+            ccn_store(hash_name, cp);
 #else
-                ccn_store(ccnl, hash_name, cp);
+            compute = 0;
+            ccn_store(ccnl, hash_name, cp);
 #endif
         }
     }
@@ -1988,3 +2018,5 @@ main(int argc, char **argv)
 }
 
 #endif /*ABSTRACT_MACHINE*/
+#endif //KRIVINE_C
+//eof

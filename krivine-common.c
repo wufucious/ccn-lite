@@ -27,8 +27,6 @@
 
 #include "ccnl-pdu.c"
 
-#define NFN_FACE -1
-
 int
 hex2int(char c)
 {
