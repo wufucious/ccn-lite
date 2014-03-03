@@ -510,6 +510,9 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
     struct ccnl_face_s * from = ccnl_malloc(sizeof(struct ccnl_face_s *));
     from->faceid = NFN_FACE;
     from->last_used = CCNL_NOW();
+    from->outq = malloc(sizeof(struct ccnl_buf_s));
+    from->outq->data[0] = strdup(name);
+    from->outq->datalen = strlen(name);
     i = ccnl_interest_new(ccnl, from, &buf, &p, minsfx, maxsfx, &ppkd);
     
     i->comp_config = cur_cfg;
@@ -558,9 +561,9 @@ ccn_store(struct ccnl_relay_s *ccnl, char *name, char *content)  // synchronous 
     name_p->complen[0] = strlen(name);
 
     c = add_computation_to_cache(ccnl, name_p, content, strlen(content));
-            
+    c->flags = CCNL_CONTENT_FLAGS_STATIC;        
     ccnl_content_add2cache(ccnl, c);
-    ccnl_content_serve_pending(ccnl,c);       
+    //ccnl_content_serve_pending(ccnl,c);       
 }
 #endif
 
@@ -1815,7 +1818,8 @@ normal:
 #ifdef ABSTRACT_MACHINE
         return ccn_name2content(rstack);
 #else
-        return ccn_name2content(ccnl, rstack, cfg); 
+        char *res = ccn_name2content(ccnl, rstack, cfg) ;
+        return res; 
 #endif
     }
 
@@ -1917,7 +1921,6 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int compute
 #else
    // ccn_store(ccnl, cp, config);
 #endif
-    DEBUGMSG(99, "COMPUTE1: %d, %s \n", compute, cp);
     while (cp && steps < MAX_STEPS) {
 	steps++;
         if(!strncmp(cp, "RST|", 4)){
@@ -1926,7 +1929,6 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int compute
 	DEBUGMSG(1, "Step %d: %s\n", steps, cp);
 	//cp = cs_trigger;
 	char *hash_name = mkHash(cp);
-        DEBUGMSG(99, "COMPUTE2: %d, %s \n", compute, cp);
         if(!compute){
 #ifdef ABSTRACT_MACHINE
                 char *nwt = ccn_name2content(hash_name);
@@ -1935,18 +1937,18 @@ char *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int compute
 #endif
                 if(!nwt) return 0;
         }
-        else{ //compute
+        //compute
             //return and wait for results        
                 //if hash not found compute
-            cp = ZAM_term(ccnl, cp);
-            
+        cp = ZAM_term(ccnl, cp);
+        if(!cp) return 0;    
 #ifdef ABSTRACT_MACHINE
-            ccn_store(hash_name, cp);
+        ccn_store(hash_name, cp);
 #else
-            compute = 0;
-            ccn_store(ccnl, hash_name, cp);
+        compute = 0;
+        ccn_store(ccnl, hash_name, cp);
+        DEBUGMSG(99, "Stored: %s --> %s\n", hash_name, cp);
 #endif
-        }
     }
 /*#ifdef ABSTRACT_MACHINE
     ccn_store(expression, cp); //ersetze durch richtigen hash eintrag
