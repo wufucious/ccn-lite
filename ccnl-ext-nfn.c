@@ -28,8 +28,15 @@
 #include "krivine.c"
 
 int 
-ccnl_nfn_resume_comp(){
+ccnl_nfn_resume_comp(struct ccnl_relay_s *ccnl, char *expression, struct ccnl_interest_s *i){
     
+    DEBUGMSG(99, "Computation content received: %s\n", expression);
+    if(!strncmp(expression, "CFG|", 4)){
+        Krivine_reduction(ccnl, expression, 0);
+    }
+    else{
+         Krivine_reduction(i->comp_config, expression, 1); 
+    }
 }
 
 int 

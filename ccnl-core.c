@@ -783,7 +783,18 @@ ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 		DEBUGMSG(6, "  forwarding content <%s>\n",
 			 ccnl_prefix_to_path(c->name));
 		ccnl_print_stats(ccnl, STAT_SND_C); //log sent c
-		ccnl_face_enqueue(ccnl, pi->face, buf_dup(c->pkt));
+#ifdef CCNL_NFN
+                DEBUGMSG(99, "FACEID of CONTENT: %d", pi->face->faceid);
+                if(pi->face->faceid != -1)
+                    ccnl_face_enqueue(ccnl, pi->face, buf_dup(c->pkt));
+                else{
+                    //ccnl_content_add2cache(ccnl, c);
+                    ccnl_nfn_resume_comp(ccnl, c->content, i);
+                }
+                
+#else
+                ccnl_face_enqueue(ccnl, pi->face, buf_dup(c->pkt));
+#endif // CCNL_NFN
 	    } else // upcall to deliver content to local client
 		ccnl_app_RX(ccnl, c);
 	    c->served_cnt++;
@@ -824,7 +835,7 @@ ccnl_do_ageing(void *ptr, void *dummy)
                 DEBUGMSG(99, "TIMEOUT --> Start computation: %s\n", i->comp_config);
                 Krivine_reduction(relay, strdup(i->comp_config), 1);
             }
-#endif CCNL_NFN
+#endif //CCNL_NFN
 	    i = ccnl_interest_remove(relay, i);
             
         }

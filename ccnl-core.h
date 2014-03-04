@@ -172,6 +172,7 @@ struct ccnl_interest_s {
     int last_used;
     int retries;
     char *comp_config;
+    //char *original_request;
 };
 
 struct ccnl_pendint_s { // pending interest

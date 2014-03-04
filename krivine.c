@@ -481,7 +481,8 @@ char*
 ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
 {
 //    printf("ccn_name2content(%s)\n", name);
-      struct ccnl_content_s *c = ccnl->contents;
+    struct ccnl_content_s *c = ccnl->contents;
+    DEBUGMSG(99, "Searching for: %s \n", name);
     if (!name)
 	return 0;
     for (c = ccnl->contents; c; c = c->next){
