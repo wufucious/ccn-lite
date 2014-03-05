@@ -26,6 +26,7 @@
 #define KRIVINE_COMMON_C
 
 #include "ccnl-pdu.c"
+#include "krivine.c"
 
 int
 hex2int(char c)
@@ -123,9 +124,18 @@ struct ccnl_content_s *
 add_computation_to_cache(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *prefix,
         char *res, int reslen){
  
+    int i = 0;
     char *out = ccnl_malloc(CCNL_MAX_PACKET_SIZE);
     memset(out, CCNL_MAX_PACKET_SIZE, 0);
-    int len = mkContent(prefix->comp, NULL, 0, res, reslen, out);
+    
+    char **prefixcomps = ccnl_malloc(sizeof(char *) * prefix->compcnt+1);
+    prefixcomps[prefix->compcnt] = 0;
+    for(i = 0; i < prefix->compcnt; ++i)
+    {
+        prefixcomps[i] = strdup(prefix->comp[i]);
+    }
+    
+    int len = mkContent(prefixcomps, NULL, 0, res, reslen, out);
     
     
     int rc= -1, scope=3, aok=3, minsfx=0, maxsfx=CCNL_MAX_NAME_COMP, contlen;

@@ -35,7 +35,6 @@ ccnl_nfn_resume_comp(struct ccnl_relay_s *ccnl, char *expression, struct ccnl_in
         Krivine_reduction(ccnl, expression, 0);
     }
     else{
-         
          Krivine_reduction(ccnl, i->comp_config, 1); 
     }
 }

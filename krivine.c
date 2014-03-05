@@ -31,6 +31,7 @@
 #define KRIVINE_C
 
 #define NFN_FACE -1
+#define USE_SPOOKY
 
 #include <ctype.h>
 #include <getopt.h>
@@ -54,7 +55,6 @@
 #define CORRECT_PARENTHESES
 
 #ifdef ABSTRACT_MACHINE
-// #define USE_SPOOKY
 
 #  define DEBUGMSG(LVL, ...) do {       \
         if ((LVL)>debug_level) break;   \
@@ -486,9 +486,9 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
     if (!name)
 	return 0;
     for (c = ccnl->contents; c; c = c->next){
-        DEBUGMSG(99,"NAME: %s, CONTENT: %s\n", c->name->comp[0], c->content);
+        //DEBUGMSG(99,"NAME: %s, CONTENT: %s\n", c->name->comp[0], c->content);
         if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
-            DEBUGMSG("Locally found: %s\n", c->content);
+            DEBUGMSG(99, "Locally found: %s\n", c->content);
             return c->content;
         }
     } 
@@ -636,16 +636,6 @@ mkHash(char *s1)
     i32 = ntohl(i);
     memset(hval, 0, sizeof(hval));
     memcpy(hval + 12, &i32, 4);
-#else
-    spooky_hash128(s1, strlen(s1), (uint64_t*) hval, (uint64_t*) &hval[8]);
-
-    for (i = 0; i < hcnt; i++, h++) {
-//	if (!strcmp(h->s1, s1))
-	if (!memcmp(h->spooky, hval, sizeof(hval)))
-	    break;
-    }
-#endif
-
     if (i >= hcnt) {
 	if (hcnt >= MAX_HASHES) {
 	    printf("** running out of hash ids: %d\n", hcnt);
@@ -659,15 +649,17 @@ mkHash(char *s1)
 
     cp = malloc(10);
     sprintf(cp, "hash%03d", h->id);
-
-/*
+#else
+    memset(hval, 0, sizeof(hval));
+    spooky_hash128(s1, strlen(s1), (uint64_t*) &hval[0], (uint64_t*) &hval[8]);
+    memcpy(h->spooky, hval, sizeof(hval));
     cp = malloc(34);
-    cp[0]='H';
     for (i = 0; i < 16; i++)
-	sprintf(cp + 1 + 2*i, "%02x", (unsigned char)h->spooky[i]);
-    cp[33] = '\0';
-//    cp[5] = '\0';
-*/
+	sprintf(cp + 1 + 2*i, "%02x", (unsigned char)hval[i]);
+    cp[0] = 'H';
+    cp[33] = 0;
+ 
+#endif
     return cp;
 }
 
