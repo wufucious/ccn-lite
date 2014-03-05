@@ -781,17 +781,19 @@ ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 		continue;
 	    pi->face->flags |= CCNL_FACE_FLAGS_SERVED;
 	    if (pi->face->ifndx >= 0) {
+                ccnl_content_add2cache(ccnl, c);
 		DEBUGMSG(6, "  forwarding content <%s>\n",
 			 ccnl_prefix_to_path(c->name));
 		ccnl_print_stats(ccnl, STAT_SND_C); //log sent c
 #ifdef CCNL_NFN
-                DEBUGMSG(99, "FACEID of CONTENT: %d", pi->face->faceid);
                 if(pi->face->faceid != -1)
                     ccnl_face_enqueue(ccnl, pi->face, buf_dup(c->pkt));
                 else{
                     //ccnl_content_add2cache(ccnl, c);
                     ccnl_nfn_resume_comp(ccnl, c->content, i);
                 }
+                c->served_cnt++;
+                cnt++;
                 
 #else
                 ccnl_face_enqueue(ccnl, pi->face, buf_dup(c->pkt));
@@ -985,7 +987,8 @@ ccnl_core_RX_i_or_c(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
 	    }
 	    if (relay->max_cache_entries != 0) { // it's set to -1 or a limit
 		DEBUGMSG(7, "  adding content to cache\n");
-		ccnl_content_add2cache(relay, c);
+		//FIXME: UNCOMMENT 
+                //ccnl_content_add2cache(relay, c);
 	    } else {
 		DEBUGMSG(7, "  content not added to cache\n");
 		free_content(c);

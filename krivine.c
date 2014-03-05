@@ -482,16 +482,19 @@ ccn_name2content(struct ccnl_relay_s *ccnl, char *name, char* cur_cfg)
 {
 //    printf("ccn_name2content(%s)\n", name);
     struct ccnl_content_s *c = ccnl->contents;
-    DEBUGMSG(99, "Searching for: %s \n", name);
+    DEBUGMSG(99, "Searching for: %s locally\n", name);
     if (!name)
 	return 0;
     for (c = ccnl->contents; c; c = c->next){
+        DEBUGMSG(99,"NAME: %s, CONTENT: %s\n", c->name->comp[0], c->content);
         if (!strcmp(c->name->comp[0], name)){ //checks only first component!!!!
-             return c->content;
+            DEBUGMSG("Locally found: %s\n", c->content);
+            return c->content;
         }
     } 
-   //FIXME: COMMMENT
+   
     //look in network
+    DEBUGMSG(99, "Searching for: %s in the network\n", name);
     char *out = malloc(CCNL_MAX_PACKET_SIZE);
     char **namecomp = malloc(sizeof(char*) * 2);
     namecomp[0] = strdup(name);
@@ -612,7 +615,9 @@ ccn_announce(struct ccnl_relay_s *ccnl, char *name, char *content)  // make new 
 
 // ----------------------------------------------------------------------
 
-//#include "spooky-c-master/spooky-c.c"
+#ifdef USE_SPOOKY
+#include "spooky-c-master/spooky-c.c"
+#endif
 
 char*
 mkHash(char *s1)
