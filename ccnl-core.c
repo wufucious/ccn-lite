@@ -738,6 +738,10 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     DEBUGMSG(99, "ccnl_content_add2cache (%d/%d)\n",
 	     ccnl->contentcnt, ccnl->max_cache_entries);
 
+    struct ccnl_content_s *cit;
+    for(cit = ccnl->contents; cit; cit = cit->next){
+        if(c == cit) return NULL;
+    }
     if (ccnl->max_cache_entries > 0 &&
 	ccnl->contentcnt >= ccnl->max_cache_entries) { // remove oldest content
 	struct ccnl_content_s *c2;
