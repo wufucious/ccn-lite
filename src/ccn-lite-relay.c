@@ -37,6 +37,7 @@
 #define USE_MGMT
 // #define USE_NACK
 // #define USE_NFN
+#define USE_NFN_DEFAULT_ROUTE
 #define USE_NFN_NSTRANS
 // #define USE_NFN_MONITOR
 // #define USE_SCHEDULER
@@ -674,6 +675,9 @@ main(int argc, char **argv)
 {
     int opt, max_cache_entries = -1, udpport = -1, httpport = -1;
     char *datadir = NULL, *ethdev = NULL, *crypto_sock_path = NULL;
+#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+    char* def_route;
+#endif
 #ifdef USE_UNIXSOCKET
     char *uxpath = CCNL_DEFAULT_UNIXSOCKNAME;
 #else
@@ -683,8 +687,12 @@ main(int argc, char **argv)
     time(&theRelay.startup_time);
     srandom(time(NULL));
 
-    while ((opt = getopt(argc, argv, "hc:d:e:g:i:s:t:u:v:x:p:")) != -1) {
+    while ((opt = getopt(argc, argv, "hc:d:e:g:i:s:t:u:v:x:p:n:")) != -1) {
         switch (opt) {
+#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+	case 'n':
+	    def_route = optarg; 
+#endif
         case 'c':
             max_cache_entries = atoi(optarg);
             break;
@@ -730,6 +738,9 @@ main(int argc, char **argv)
 usage:
             fprintf(stderr,
                     "usage: %s [options]\n"
+#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+		    "  -n default nfn route ip/port: x.x.x.x/xxxx"
+#endif
                     "  -c MAX_CONTENT_ENTRIES\n"
                     "  -d databasedir\n"
                     "  -e ethdev\n"
@@ -785,6 +796,47 @@ usage:
 
     ccnl_relay_config(&theRelay, ethdev, udpport, httpport,
                       uxpath, suite, max_cache_entries, crypto_sock_path);
+
+#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+    if(def_route){
+	
+    	struct ccnl_if_s *i;
+	char host[16];
+	char port[6];
+	char *ptr = strtok(def_route, "/");
+	while(ptr != NULL){
+	    ptr = strtok(NULL, "/");
+	    break;
+	}
+	memset(host,'\0', sizeof(host));
+	memset(port,'\0', sizeof(port));
+	DEBUGMSG(VERBOSE, "ptr: %s %p; %s %p\n", ptr, ptr, def_route, def_route);
+	strncpy(host, def_route, ptr-def_route);
+	strcpy(port, ptr);
+
+	DEBUGMSG(VERBOSE, "Creating default nfn route: %s/%s\n", host, port);
+
+	i = ccnl_malloc(sizeof(*i));
+        i->sock = ccnl_open_udpdev(strtol((char*)port, NULL, 0), &i->addr.ip4);
+        i->mtu = CCN_DEFAULT_MTU;
+        i->reflect = 0;
+        i->fwdalli = 1;
+
+        if (theRelay.defaultInterfaceScheduler){
+            i->sched = theRelay.defaultInterfaceScheduler(&theRelay, ccnl_interface_CTS);
+	}
+
+        sockunion su;
+        su.sa.sa_family = AF_INET;
+        inet_aton((const char*)host, &su.ip4.sin_addr);
+        su.ip4.sin_port = htons(strtol((const char*)port, NULL, 0));
+
+	theRelay.nfn_default_face = ccnl_get_face_or_create(&theRelay, -1, &su.sa, sizeof(struct sockaddr_in));
+    }
+    else{
+	theRelay.nfn_default_face = 0;    
+    }
+#endif
     if (datadir)
         ccnl_populate_cache(&theRelay, datadir);
     

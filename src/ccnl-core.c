@@ -450,7 +450,7 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
 {
     struct ccnl_forward_s *fwd;
     int rc = 0;
-#ifdef USE_NACK
+#if defined(USE_NACK) || defined(USE_NFN_DEFAULT_ROUTE)
     int matching_face = 0;
 #endif
     DEBUGMSG(DEBUG, "ccnl_interest_propagate\n");
@@ -477,9 +477,11 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
         // suppress forwarding to origin of interest, except wireless
         if (!i->from || fwd->face != i->from ||
                                 (i->from->flags & CCNL_FACE_FLAGS_REFLECT)) {
+#ifdef USE_NFN_MONITOR
             ccnl_nfn_monitor(ccnl, fwd->face, i->prefix, NULL, 0);
+#endif
             ccnl_face_enqueue(ccnl, fwd->face, buf_dup(i->pkt));
-#ifdef USE_NACK
+#if defined(USE_NACK) || defined(USE_NFN_DEFAULT_ROUTE)
             matching_face = 1;
 #endif
         }
@@ -492,7 +494,14 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
         ccnl_interest_remove(ccnl, i);
     }
 #endif
-
+#ifndef USE_NACK
+#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+    if(!matching_face && ccnl->nfn_default_face){
+	    DEBUGMSG(DEBUG, "No matching face found, using NFN_DEFAULT_ROUTE\n");
+            ccnl_face_enqueue(ccnl, ccnl->nfn_default_face, buf_dup(i->pkt));
+    }
+#endif
+#endif
     return;
 }
 
