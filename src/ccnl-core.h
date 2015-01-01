@@ -109,7 +109,7 @@ struct ccnl_relay_s {
     struct ccnl_face_s *crypto_face;
     struct ccnl_pendcrypt_s *pendcrypt;
     char *crypto_path;
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if defined(USE_NFN_DEFAULT_ROUTE)
     struct ccnl_face_s *nfn_default_face;
 #endif
 };

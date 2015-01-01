@@ -495,7 +495,7 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
     }
 #endif
 #ifndef USE_NACK
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if defined(USE_NFN_DEFAULT_ROUTE)
     if(!matching_face && ccnl->nfn_default_face){
 	    DEBUGMSG(DEBUG, "No matching face found, using NFN_DEFAULT_ROUTE\n");
             ccnl_face_enqueue(ccnl, ccnl->nfn_default_face, buf_dup(i->pkt));

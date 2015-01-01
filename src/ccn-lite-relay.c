@@ -675,7 +675,7 @@ main(int argc, char **argv)
 {
     int opt, max_cache_entries = -1, udpport = -1, httpport = -1;
     char *datadir = NULL, *ethdev = NULL, *crypto_sock_path = NULL;
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if defined(USE_NFN_DEFAULT_ROUTE)
     char* def_route;
 #endif
 #ifdef USE_UNIXSOCKET
@@ -689,9 +689,10 @@ main(int argc, char **argv)
 
     while ((opt = getopt(argc, argv, "hc:d:e:g:i:s:t:u:v:x:p:n:")) != -1) {
         switch (opt) {
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if defined(USE_NFN_DEFAULT_ROUTE)
 	case 'n':
 	    def_route = optarg; 
+	    break;
 #endif
         case 'c':
             max_cache_entries = atoi(optarg);
@@ -738,7 +739,7 @@ main(int argc, char **argv)
 usage:
             fprintf(stderr,
                     "usage: %s [options]\n"
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if !defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
 		    "  -n default nfn route ip/port: x.x.x.x/xxxx"
 #endif
                     "  -c MAX_CONTENT_ENTRIES\n"
@@ -797,7 +798,7 @@ usage:
     ccnl_relay_config(&theRelay, ethdev, udpport, httpport,
                       uxpath, suite, max_cache_entries, crypto_sock_path);
 
-#if defined(USE_NFN) && defined(USE_NFN_DEFAULT_ROUTE)
+#if defined(USE_NFN_DEFAULT_ROUTE)
     if(def_route){
 	
     	struct ccnl_if_s *i;
