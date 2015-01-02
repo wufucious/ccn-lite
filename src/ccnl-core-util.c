@@ -310,8 +310,9 @@ ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, unsigned int *chunknum)
     else
         cnt = 0;
 
-    if (nfnexpr && *nfnexpr)
+    if (nfnexpr && *nfnexpr){
         cnt += 1;
+    }
 
     p = ccnl_prefix_new(suite, cnt);
     if (!p)
