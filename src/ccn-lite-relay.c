@@ -811,7 +811,6 @@ usage:
 	}
 	memset(host,'\0', sizeof(host));
 	memset(port,'\0', sizeof(port));
-	DEBUGMSG(VERBOSE, "ptr: %s %p; %s %p\n", ptr, ptr, def_route, def_route);
 	strncpy(host, def_route, ptr-def_route);
 	strcpy(port, ptr);
 
