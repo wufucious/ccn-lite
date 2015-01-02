@@ -676,7 +676,7 @@ main(int argc, char **argv)
     int opt, max_cache_entries = -1, udpport = -1, httpport = -1;
     char *datadir = NULL, *ethdev = NULL, *crypto_sock_path = NULL;
 #if defined(USE_NFN_DEFAULT_ROUTE)
-    char* def_route;
+    char* def_route=0;
 #endif
 #ifdef USE_UNIXSOCKET
     char *uxpath = CCNL_DEFAULT_UNIXSOCKNAME;
