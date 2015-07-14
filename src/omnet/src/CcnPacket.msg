@@ -15,7 +15,8 @@
 
 cplusplus {{
 #include "INETDefs.h"
-#include "ByteArrayMessage.h"
+#include "RawPacket.h"
+//#include "ByteArrayMessage.h"
 }}
 
 enum CcnPayloadType {
@@ -33,7 +34,7 @@ enum CcnSuiteType {
 // ByteArrayMessage is an INET defined type for dynamically varying packet
 // sizes, which allows us to store in it the CCN packet
 //
-packet ByteArrayMessage;
+packet RawPacket;
 
 
 //      The following is a container for the CCN packet handed by the CCNlite core.
@@ -41,7 +42,7 @@ packet ByteArrayMessage;
 //      experiments (e.g. we use the CS-id of the cache that consumes an 
 //      Interest in our experiments with transport strategies). 
 //
-packet CcnPacket extends ByteArrayMessage {
+packet CcnPacket extends RawPacket {
     byteLength = 6;		// Set initial size of packet upon construction to 
     					// automatically account for the extra fields added below.
     					// Thereafter when creating a new CcnPacket be carefull to 
