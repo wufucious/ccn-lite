@@ -17,7 +17,8 @@ package unibas.ccnlite.node;
 
 import unibas.ccnlite.Ccn;
 import inet.networklayer.common.InterfaceTable;
-import inet.linklayer.IWiredNic;
+import inet.linklayer.contract.IWiredNic;
+//import inet.linklayer.IWiredNic;
 //import inet.mobility.IMobility;
 import inet.base.NotificationBoard;
 //import inet.mobility.models.StationaryMobility;
