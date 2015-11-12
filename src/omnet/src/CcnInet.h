@@ -10,16 +10,19 @@
 #ifndef CCN_INET_H_
 #define CCN_INET_H_
 
-
-#include <netinet/in.h>         // sockaddr, sockaddr_in, sockaddr_in6
-#include <linux/if_packet.h>    // sockaddr_ll
-#include <linux/if_ether.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
+//raw sockets (sockaddr_ll) not supported in Windows
+//#include <netinet/in.h>         // sockaddr, sockaddr_in, sockaddr_in6
+//#include <linux/if_packet.h>    // sockaddr_ll
+//#include <linux/if_ether.h>
 
 #include "shared.h"
 #include "INETDefs.h"
 #include "QueueBase.h"
 #include "AbstractQueue.h"
-#include "IPvXAddress.h"
+#include "L3Address.h"
+//#include "IPvXAddress.h"
 #include "MACAddress.h"
 #include "IInterfaceTable.h"
 #include "UDPSocket.h"

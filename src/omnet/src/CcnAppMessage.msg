@@ -17,10 +17,11 @@
 
 cplusplus {{
 #include "INETDefs.h"
-#include "ByteArrayMessage.h"
+#include "RawPacket.h"
+//#include "ByteArrayMessage.h"
 }}
 
-packet ByteArrayMessage;
+packet RawPacket;
 
 
 // 42 is the Content of the answer to the ultimate question of life.
@@ -46,7 +47,7 @@ enum CcnRelayAction {
 // (strategy or application). Can be extended to enable various signalling/data 
 // operations between the two (see some options in the commented code)
 //
-packet CcnAppMessage extends ByteArrayMessage {
+packet CcnAppMessage extends RawPacket {
     int		type @enum(CcnAppMessageType);
     int		action @enum(CcnRelayAction);
     string 	contentName;
