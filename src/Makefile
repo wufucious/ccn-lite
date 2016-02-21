@@ -20,7 +20,7 @@ GCC_GTEQ_40900 := $(shell expr ${GCC_VERSION} \>= 40900)
 
 # general flags used on both linux and OSX
 CCNLCFLAGS=-Wall -Werror -std=c99 -g
-
+	
 ifeq ($(RIOTBASE),)
 	CCNLCFLAGS += -pedantic -O0
 endif
@@ -68,11 +68,6 @@ ifeq ($(uname_S),Darwin)
 
     # removes debug compile artifacts
     EXTMAKECLEAN += rm -rf *.dSYM
-
-		#HomeBrew openssl problem
-		CCNLCFLAGS +=   -I/usr/local/opt/openssl/include
-		EXTLIBS=  -lcrypto
-#		EXTLIBS=  -L/usr/local/opt/openssl/lib
 endif
 
 ifdef USE_NFN
