@@ -26,6 +26,7 @@
 
 #define USE_DEBUG               // must select this for USE_MGMT
 // #define USE_DEBUG_MALLOC
+#define USE_DUP_CHECK
 // #define USE_FRAG
 #define USE_LINKLAYER
 #define USE_LOGGING
@@ -428,7 +429,7 @@ ccnl_open_ethdev(char *devname, struct sockaddr_ll *sll, int ethtype)
     sll->sll_ifindex = dev->ifindex;
 
     DEBUGMSG(INFO, "access to %s with MAC=%s installed\n",
-             devname, eth2ascii(sll->sll_addr));
+             devname, ll2ascii(sll->sll_addr, sll->sll_halen));
     //    dev_put(dev);
     return dev;
 }

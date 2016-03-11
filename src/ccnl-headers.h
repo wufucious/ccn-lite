@@ -40,7 +40,7 @@ void ccnl_do_ageing(void *ptr, void *dummy);
 int ccnl_nonce_find_or_append(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *nonce);
 void ccnl_core_RX(struct ccnl_relay_s *relay, int ifndx, unsigned char *data, int datalen, struct sockaddr *sa, int addrlen);
 void ccnl_core_init(void);
-void ccnl_core_addToCleanup(struct ccnl_buf_s *buf);
+//void ccnl_core_addToCleanup(struct ccnl_buf_s *buf);
 void ccnl_core_cleanup(struct ccnl_relay_s *ccnl);
 #ifndef ccnl_buf_new
 struct ccnl_buf_s* ccnl_buf_new(void *data, int len);
@@ -50,7 +50,6 @@ struct ccnl_buf_s* ccnl_buf_new(void *data, int len);
 /* ccnl-ext-debug.c */
 
 #ifdef USE_DEBUG
-char *eth2ascii(unsigned char *eth);
 char *frag_protocol(int e);
 void ccnl_dump(int lev, int typ, void *p);
 int get_buf_dump(int lev, void *p, long *outbuf, int *len, long *next);
@@ -233,7 +232,8 @@ int ccnl_lambdaStrToComponents(char **compVector, char *str);
 struct ccnl_buf_s *ccnl_mkSimpleInterest(struct ccnl_prefix_s *name, int *nonce);
 struct ccnl_buf_s *ccnl_mkSimpleContent(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, int *payoffset);
 int ccnl_str2suite(char *cp);
-
+int ccnl_add_fib_entry(struct ccnl_relay_s *relay, struct ccnl_prefix_s *pfx, struct ccnl_face_s *face);
+void ccnl_show_fib(struct ccnl_relay_s *relay);
 
 //---------------------------------------------------------------------------------------------------------------------------------------
 /* fwd-ccnb.c */

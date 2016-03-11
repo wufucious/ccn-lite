@@ -3,6 +3,7 @@
  * @b CCN lite, common utility procedures (used by utils as well as relays)
  *
  * Copyright (C) 2011-15, Christian Tschudin, University of Basel
+ * Copyright (C) 2016, Martine Lenders <mlenders@inf.fu-berlin.de>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -137,9 +138,12 @@ ccnl_prefix_cmp(struct ccnl_prefix_s *pfx, unsigned char *md,
     int i, clen, plen = pfx->compcnt + (md ? 1 : 0), rc = -1;
     unsigned char *comp;
 
+    char *s1 = NULL, *s2 = NULL;
     DEBUGMSG(VERBOSE, "prefix_cmp(mode=%s) prefix=<%s> of? name=<%s> digest=%p\n",
              ccnl_matchMode2str(mode),
-             ccnl_prefix_to_path(pfx), ccnl_prefix_to_path(nam), (void *) md);
+             (s1 = ccnl_prefix_to_path(pfx)), (s2 = ccnl_prefix_to_path(nam)), (void *) md);
+    ccnl_free(s1);
+    ccnl_free(s2);
 
     if (mode == CMP_EXACT) {
         if (plen != nam->compcnt)
@@ -178,12 +182,14 @@ ccnl_i_prefixof_c(struct ccnl_prefix_s *prefix,
     unsigned char *md;
     struct ccnl_prefix_s *p = c->pkt->pfx;
 
+    char *s1 = NULL, *s2 = NULL;
     DEBUGMSG(VERBOSE, "ccnl_i_prefixof_c prefix=<%s> content=<%s> min=%d max=%d\n",
-             ccnl_prefix_to_path(prefix), ccnl_prefix_to_path(p),
+             (s1 = ccnl_prefix_to_path(prefix)), (s2 = ccnl_prefix_to_path(p)),
              // ccnl_prefix_to_path_detailed(prefix,1,0,0),
              // ccnl_prefix_to_path_detailed(p,1,0,0),
              minsuffix, maxsuffix);
-
+    ccnl_free(s1);
+    ccnl_free(s2);
     // CONFORM: we do prefix match, honour min. and maxsuffix,
 
     // NON-CONFORM: "Note that to match a ContentObject must satisfy
@@ -854,6 +860,35 @@ free_packet(struct ccnl_pkt_s *pkt)
 }
 
 // ----------------------------------------------------------------------
+static inline char
+_half_byte_to_char(uint8_t half_byte)
+{
+    return (half_byte < 10) ? ('0' + half_byte) : ('a' + (half_byte - 10));
+}
+
+/* translates link-layer address into a string */
+char*
+ll2ascii(unsigned char *addr, size_t len)
+{
+    size_t i;
+    static char out[CCNL_LLADDR_STR_MAX_LEN + 1];
+
+    out[0] = '\0';
+
+    for (i = 0; i < len; i++) {
+        out[(3 * i)] = _half_byte_to_char(addr[i] >> 4);
+        out[(3 * i) + 1] = _half_byte_to_char(addr[i] & 0xf);
+
+        if (i != (len - 1)) {
+            out[(3 * i) + 2] = ':';
+        }
+        else {
+            out[(3 * i) + 2] = '\0';
+        }
+    }
+
+    return out;
+}
 
 char*
 ccnl_addr2ascii(sockunion *su)
@@ -869,15 +904,13 @@ ccnl_addr2ascii(sockunion *su)
 
     switch (su->sa.sa_family) {
 #ifdef USE_LINKLAYER
-#ifdef USE_DEBUG
     case AF_PACKET: {
         struct sockaddr_ll *ll = &su->linklayer;
-        strcpy(result, eth2ascii(ll->sll_addr));
+        strcpy(result, ll2ascii(ll->sll_addr, ll->sll_halen));
         sprintf(result+strlen(result), "/0x%04x",
             ntohs(ll->sll_protocol));
         return result;
     }
-#endif
 #endif
 #ifdef USE_IPV4
     case AF_INET:
@@ -905,6 +938,79 @@ ccnl_addr2ascii(sockunion *su)
 
     (void) result; // silence compiler warning (if neither USE_LINKLAYER, USE_IPV4, USE_IPV6, nor USE_UNIXSOCKET is set)
     return NULL;
+}
+
+// ----------------------------------------------------------------------
+#ifdef NEEDS_PREFIX_MATCHING
+
+/* add a new entry to the FIB */
+int
+ccnl_add_fib_entry(struct ccnl_relay_s *relay, struct ccnl_prefix_s *pfx,
+                   struct ccnl_face_s *face)
+{
+    struct ccnl_forward_s *fwd, **fwd2;
+
+    char *s = NULL;
+    DEBUGMSG_CFWD(INFO, "adding FIB for <%s>, suite %s\n",
+             (s = ccnl_prefix_to_path(pfx)), ccnl_suite2str(pfx->suite));
+    ccnl_free(s);
+
+    for (fwd = relay->fib; fwd; fwd = fwd->next) {
+        if (fwd->suite == pfx->suite &&
+                        !ccnl_prefix_cmp(fwd->prefix, NULL, pfx, CMP_EXACT)) {
+            free_prefix(fwd->prefix);
+            fwd->prefix = NULL;
+            break;
+        }
+    }
+    if (!fwd) {
+        fwd = (struct ccnl_forward_s *) ccnl_calloc(1, sizeof(*fwd));
+        if (!fwd)
+            return -1;
+        fwd2 = &relay->fib;
+        while (*fwd2)
+            fwd2 = &((*fwd2)->next);
+        *fwd2 = fwd;
+        fwd->suite = pfx->suite;
+    }
+    fwd->prefix = pfx;
+    fwd->face = face;
+
+    return 0;
+}
+
+#endif
+
+/* prints the current FIB */
+void
+ccnl_show_fib(struct ccnl_relay_s *relay)
+{
+#ifndef CCNL_LINUXKERNEL
+    struct ccnl_forward_s *fwd;
+
+    printf("%-30s | %-10s | %-9s | Peer\n",
+           "Prefix", "Suite",
+#ifdef CCNL_RIOT
+           "Interface"
+#else
+           "Socket"
+#endif
+           );
+    puts("-------------------------------|------------|-----------|------------------------------------");
+    char *s = NULL;
+    for (fwd = relay->fib; fwd; fwd = fwd->next) {
+        printf("%-30s | %-10s |        %02i | %s\n", (s = ccnl_prefix_to_path(fwd->prefix)),
+                                     ccnl_suite2str(fwd->suite), (int)
+                                     /* TODO: show correct interface instead of always 0 */
+#ifdef CCNL_RIOT
+                                     (relay->ifs[0]).if_pid,
+#else
+                                     (relay->ifs[0]).sock,
+#endif
+                                     ccnl_addr2ascii(&fwd->face->peer));
+        ccnl_free(s);
+    }
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -946,6 +1052,11 @@ ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr, int ccntlv_skip,
         buf = prefix_buf2;
     */
     char *buf = (char*) ccnl_malloc(PREFIX_BUFSIZE);
+    if (buf == NULL) {
+        DEBUGMSG_CUTL(ERROR, "ccnl_prefix_to_path_detailed: malloc failed, exiting\n");
+        return NULL;
+    }
+
 #ifdef USE_NFN
     if (pr->nfnflags & CCNL_PREFIX_NFN)
         len += sprintf(buf + len, "nfn");
@@ -1096,8 +1207,10 @@ ccnl_mkSimpleContent(struct ccnl_prefix_s *name,
     unsigned char *tmp;
     int len = 0, contentpos = 0, offs;
 
+    char *s = NULL;
     DEBUGMSG_CUTL(DEBUG, "mkSimpleContent (%s, %d bytes)\n",
-             ccnl_prefix_to_path(name), paylen);
+             (s = ccnl_prefix_to_path(name)), paylen);
+    ccnl_free(s);
 
     tmp = (unsigned char*) ccnl_malloc(CCNL_MAX_PACKET_SIZE);
     offs = CCNL_MAX_PACKET_SIZE;

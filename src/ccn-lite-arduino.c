@@ -57,6 +57,7 @@ unsigned char mac_addr[] = {0x55, 0x42, 0x41, 0x53, 0x45, 0x4c};
 //#define USE_CCNxDIGEST
 #define USE_DEBUG                      // must select this for USE_MGMT
 // #define USE_DEBUG_MALLOC
+#define USE_DUP_CHECK
 //#define USE_FRAG
 //#define USE_LINKLAYER
 //#define USE_HMAC256
@@ -363,7 +364,7 @@ ccnl_ll_TX(struct ccnl_relay_s *ccnl, struct ccnl_if_s *ifc,
                              ifc->addr.linklayer.sll_addr,
                              buf->data, buf->datalen);
         DEBUGMSG(DEBUG, "eth_sendto %s returned %d\n",
-                 eth2ascii(dest->linklayer.sll_addr), rc);
+                 ll2ascii(dest->linklayer.sll_addr), rc);
         break;
 #endif
 #ifdef USE_UNIXSOCKET
