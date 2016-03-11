@@ -21,27 +21,27 @@
  * 2014-11-05 small code cleanups, now using NDNTLV as default encoding
  */
 
-#include <assert.h>
+#include <assert.h>//riot
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <unistd.h>
+#include <stdbool.h>//riot
+#include <stdio.h>//riot
+#include <stdlib.h>//riot
+#include <string.h>//riot
+#include <time.h>//riot
+#include <unistd.h>//riot
 
 #include <sys/ioctl.h>
 #include <sys/select.h>
-#include <sys/socket.h>
+#include <sys/socket.h>// riot "sys/socket.h"
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
-#include <arpa/inet.h>
+#include <arpa/inet.h>//riot
 #include <netinet/in.h>
 
 #ifndef _DEFAULT_SOURCE
@@ -60,7 +60,7 @@ int inet_aton(const char *cp, struct in_addr *inp);
 // ----------------------------------------------------------------------
 // "replacement lib"
 
-#define FATAL   0 // FATAL
+#define FATAL   0 // FATAL		//riot
 #define ERROR   1 // ERROR
 #define WARNING 2 // WARNING
 #define INFO    3 // INFO
@@ -68,6 +68,7 @@ int inet_aton(const char *cp, struct in_addr *inp);
 #define TRACE   5 // TRACE
 #define VERBOSE 6 // VERBOSE
 
+/*riot*/
 #define DEBUGMSG(LVL, ...) do {       \
         if ((LVL)>debug_level) break;   \
         fprintf(stderr, __VA_ARGS__);   \
@@ -117,9 +118,9 @@ int inet_aton(const char *cp, struct in_addr *inp);
 
 #define compute_ccnx_digest(b) NULL
 #define local_producer(...)             0
-
+/*riot*/
 //----------------------------------------------------------------------
-
+//riot
 #include "ccnl-defs.h"
 #include "ccnl-core.h"
 
@@ -137,15 +138,15 @@ char* ccnl_addr2ascii(sockunion *su);
 void ccnl_core_addToCleanup(struct ccnl_buf_s *buf);
 const char* ccnl_suite2str(int suite);
 bool ccnl_isSuite(int suite);
-
+//riot
 //----------------------------------------------------------------------
-static inline void ccnl_ll_TX(struct ccnl_relay_s *r, struct ccnl_if_s *i,
+static inline void ccnl_ll_TX(struct ccnl_relay_s *r, struct ccnl_if_s *i,				//riot diff
                 sockunion *a, struct ccnl_buf_s *b)
 {
     sendto(i->sock,b->data,b->datalen,r?0:0,(struct sockaddr*)&(a)->ip4,sizeof(struct sockaddr_in));
 }
 
-struct ccnl_buf_s*
+struct ccnl_buf_s*																		//riot
 ccnl_buf_new(void *data, int len)
 {
     struct ccnl_buf_s *b = ccnl_malloc(sizeof(*b) + len);
@@ -165,17 +166,17 @@ ccnl_buf_new(void *data, int len)
 // (because we do not want to have includes beyond the core CCN logic)
 
 void
-ccnl_get_timeval(struct timeval *tv)
+ccnl_get_timeval(struct timeval *tv)						//riot moved to ccnl-os-time.c,
 {
     gettimeofday(tv, NULL);
 }
 
 long
-timevaldelta(struct timeval *a, struct timeval *b) {
+timevaldelta(struct timeval *a, struct timeval *b) {		//riot moved to ccnl-os-time.c, $timeval defined in <bits/time.h>, need redefined
     return 1000000*(a->tv_sec - b->tv_sec) + a->tv_usec - b->tv_usec;
 }
 
-struct ccnl_timer_s {
+struct ccnl_timer_s {										//riot moved to ccnl-os-time.c,
     struct ccnl_timer_s *next;
     struct timeval timeout;
     void (*fct)(char,int);
@@ -187,10 +188,10 @@ struct ccnl_timer_s {
     int handler;
 };
 
-struct ccnl_timer_s *eventqueue;
+struct ccnl_timer_s *eventqueue;							//riot moved to ccnl-os-time.c,
 
 void*
-ccnl_set_timer(int usec, void (*fct)(void *aux1, void *aux2),
+ccnl_set_timer(int usec, void (*fct)(void *aux1, void *aux2),//riot moved to ccnl-os-time.c,
                  void *aux1, void *aux2)
 {
     struct ccnl_timer_s *t, **pp;
@@ -221,7 +222,7 @@ ccnl_set_timer(int usec, void (*fct)(void *aux1, void *aux2),
 }
 
 void
-ccnl_rem_timer(void *h)
+ccnl_rem_timer(void *h)                                    //riot moved to ccnl-os-time.c,
 {
     struct ccnl_timer_s **pp;
 
@@ -236,7 +237,7 @@ ccnl_rem_timer(void *h)
 }
 
 double
-CCNL_NOW()
+CCNL_NOW()													//riot moved to ccnl-os-time.c,
 {
     struct timeval tv;
     static time_t start;
@@ -254,7 +255,7 @@ CCNL_NOW()
 }
 
 struct timeval*
-ccnl_run_events()
+ccnl_run_events()												//changed to the "int ccnl_run_events()" in ccnl-os-time.c
 {
     static struct timeval now;
     long usec;
@@ -278,8 +279,8 @@ ccnl_run_events()
 
 // ----------------------------------------------------------------------
 
-int debug_level;
-struct ccnl_relay_s theRelay;
+int debug_level;												//riot redefined in ccnl-common.c
+struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 
 #include "ccnl-core.c"
 

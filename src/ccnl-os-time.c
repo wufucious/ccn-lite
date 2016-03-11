@@ -68,7 +68,7 @@ current_time(void)
     static time_t start;
     static time_t start_usec;
 
-    gettimeofday(&tv, NULL);
+    gettimeofday(&tv, NULL);				//may need to be redefined for contikik
 
     if (!start) {
         start = tv.tv_sec;
