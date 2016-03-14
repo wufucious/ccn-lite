@@ -49,6 +49,31 @@
  * 6 is enough */
 #define CCNL_LLADDR_STR_MAX_LEN    (3 * 6)
 #endif
+
+#ifdef CCNL_CONTIKI
+
+#define SOCKADDR_MAX_DATA_LEN   (26)
+
+typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
+
+/**
+ * @brief   Used to define the socket address.
+ */
+struct sockaddr {
+    sa_family_t sa_family;                  /**< Address family */
+    char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
+};
+
+/**
+ * @brief   Implementation based socket address table.
+ * @extends struct sockaddr
+ */
+struct sockaddr_storage {
+    sa_family_t ss_family;                  /**< Address family */
+    uint8_t ss_data[SOCKADDR_MAX_DATA_LEN]; /**< Socket address */
+};
+
+#endif
 // ----------------------------------------------------------------------
 
 typedef union {
