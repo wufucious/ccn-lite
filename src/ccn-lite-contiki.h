@@ -1,3 +1,6 @@
+#ifndef CCN_LITE_CONTIKI_H
+#define CCN_LITE_CONTIKI_H
+
 #include <assert.h>//riot
 // #include <ctype.h>
 // #include <errno.h>
@@ -10,6 +13,11 @@
 #include <string.h>//riot
 #include <time.h>//riot
 #include <unistd.h>//riot
+#include <stdint.h> //add by me //uint32_t uint8_t......
+
+#include "ccnl-defs.h"
+#include "ccnl-core.h"
+#include "ccnl-headers.h"
 
 #define FATAL   0 // FATAL		//riot
 #define ERROR   1 // ERROR
@@ -70,84 +78,104 @@
 #define compute_ccnx_digest(b) NULL
 #define local_producer(...)             0
 
-#define SOCKADDR_MAX_DATA_LEN   (26)
+/*-----------------------------------------------*/
+// #define SOCKADDR_MAX_DATA_LEN   (26)
+//
+// typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
+// typedef uint16_t in_port_t;         /**< Internet port type */
+// typedef uint32_t in_addr_t;         /**< IPv4 address type */
+//
+// /**
+//  * IPv4 address structure type.
+//  */
+// struct in_addr {
+//     in_addr_t s_addr;           /**< an IPv4 address */
+// };
+//
+// /**
+//  * @brief   IPv6 address structure type.
+//  */
+// struct in6_addr {
+//     uint8_t s6_addr[16];        /**< unsigned 8-bit integer array */
+// };
+//
+// /**
+//  * @brief   Used to define the socket address.
+//  */
+// struct sockaddr {
+//     sa_family_t sa_family;                  /**< Address family */
+//     char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
+// };
+//
+// /**
+//  * @brief   Implementation based socket address table.
+//  * @extends struct sockaddr
+//  */
+// struct sockaddr_storage {
+//     sa_family_t ss_family;                  /**< Address family */
+//     uint8_t ss_data[SOCKADDR_MAX_DATA_LEN]; /**< Socket address */
+// };
+// /**
+//  * @brief   IPv4 socket address type.
+//  * @extends struct sockaddr
+//  */
+// struct sockaddr_in {
+//     sa_family_t     sin_family; /**< Protocol family, always AF_INET */
+//     in_port_t       sin_port;   /**< Port number */
+//     struct in_addr  sin_addr;   /**< IPv4 address */
+// };
+//
+// /**
+//  * IPv6 socket address type.
+//  * @extends struct sockaddr
+//  */
+// struct sockaddr_in6 {
+//     /**
+//      * Protocol family, always AF_INET6. Member of struct sockaddr_in6
+//      */
+//     int             sin6_family;    /**< Protocol family, always AF_INET6 */
+//     in_port_t       sin6_port;      /**< Port number */
+//     uint32_t        sin6_flowinfo;  /**< IPv6 traffic class and flow information */
+//     struct in6_addr sin6_addr;      /**< IPv6 address */
+//     uint32_t        sin6_scope_id;  /**< Set of interfaces for a scope */
+// };
+//
+// /**
+//  * @brief Link-Layer socket descriptor
+//  */
+// struct sockaddr_ll {
+//     unsigned short sll_family;   /**< Always AF_PACKET */
+//     unsigned short sll_protocol; /**< Physical-layer protocol */
+//     int            sll_ifindex;  /**< Interface number */
+//     unsigned short sll_hatype;   /**< ARP hardware type */
+//     unsigned char  sll_pkttype;  /**< Packet type */
+//     unsigned char  sll_halen;    /**< Length of address */
+//     unsigned char  sll_addr[8];  /**< Physical-layer address */
+// };
+//
+// /**
+//  * @brief   IPv6 multicast request.
+//  */
+// struct ipv6_mreq {
+//     struct in6_addr ipv6mr_multiaddr;   /**< an IPv6 multicast address */
+//     unsigned        ipv6mr_interface;   /**< interface index, leave 0 for default */
+// };
+/*-----------------------------------------------*/
+//copy from uip.h in Contiki. implemnt the ntohs and ntohl functions
+//by test, contiki running on arm cortex m3 is little endian machine
+#define HTONS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
+#define HTONL(n) (((uint32_t)HTONS(n) << 16) | HTONS((uint32_t)(n) >> 16))
+uint16_t
+ntohs(uint16_t val)
+{
+  return HTONS(val);
+}
 
-typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
-typedef uint16_t in_port_t;         /**< Internet port type */
-typedef uint32_t in_addr_t;         /**< IPv4 address type */
+uint32_t
+ntohl(uint32_t val)
+{
+  return HTONL(val);
+}
+/*---------------------------------------------------------------------------*/
 
-/**
- * IPv4 address structure type.
- */
-struct in_addr {
-    in_addr_t s_addr;           /**< an IPv4 address */
-};
-
-/**
- * @brief   IPv6 address structure type.
- */
-struct in6_addr {
-    uint8_t s6_addr[16];        /**< unsigned 8-bit integer array */
-};
-
-/**
- * @brief   Used to define the socket address.
- */
-struct sockaddr {
-    sa_family_t sa_family;                  /**< Address family */
-    char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
-};
-
-/**
- * @brief   Implementation based socket address table.
- * @extends struct sockaddr
- */
-struct sockaddr_storage {
-    sa_family_t ss_family;                  /**< Address family */
-    uint8_t ss_data[SOCKADDR_MAX_DATA_LEN]; /**< Socket address */
-};
-/**
- * @brief   IPv4 socket address type.
- * @extends struct sockaddr
- */
-struct sockaddr_in {
-    sa_family_t     sin_family; /**< Protocol family, always AF_INET */
-    in_port_t       sin_port;   /**< Port number */
-    struct in_addr  sin_addr;   /**< IPv4 address */
-};
-
-/**
- * IPv6 socket address type.
- * @extends struct sockaddr
- */
-struct sockaddr_in6 {
-    /**
-     * Protocol family, always AF_INET6. Member of struct sockaddr_in6
-     */
-    int             sin6_family;    /**< Protocol family, always AF_INET6 */
-    in_port_t       sin6_port;      /**< Port number */
-    uint32_t        sin6_flowinfo;  /**< IPv6 traffic class and flow information */
-    struct in6_addr sin6_addr;      /**< IPv6 address */
-    uint32_t        sin6_scope_id;  /**< Set of interfaces for a scope */
-};
-
-/**
- * @brief Link-Layer socket descriptor
- */
-struct sockaddr_ll {
-    unsigned short sll_family;   /**< Always AF_PACKET */
-    unsigned short sll_protocol; /**< Physical-layer protocol */
-    int            sll_ifindex;  /**< Interface number */
-    unsigned short sll_hatype;   /**< ARP hardware type */
-    unsigned char  sll_pkttype;  /**< Packet type */
-    unsigned char  sll_halen;    /**< Length of address */
-    unsigned char  sll_addr[8];  /**< Physical-layer address */
-};
-
-/**
- * @brief   IPv6 multicast request.
- */
-struct ipv6_mreq {
-    struct in6_addr ipv6mr_multiaddr;   /**< an IPv6 multicast address */
-    unsigned        ipv6mr_interface;   /**< interface index, leave 0 for default */
-};
+#endif /* CCN_LITE_CONTIKI_H */

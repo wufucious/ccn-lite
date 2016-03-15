@@ -60,7 +60,8 @@
 
 // #define USE_DUP_CHECK
 // #define USE_IPV4
-// #define USE_SUITE_NDNTLV
+// #define USE_IPV6
+// #define USE_SUITE_NDNTLV //move to ccnl-defs.h
 #define NEEDS_PREFIX_MATCHING
 
 // ----------------------------------------------------------------------
@@ -451,6 +452,7 @@ struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 //     return 0;
 // }
 int main(int argc, char const *argv[]) {
+  int suite = CCNL_SUITE_NDNTLV;
   /* code */
   return 0;
 }

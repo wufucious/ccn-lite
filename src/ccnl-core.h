@@ -51,75 +51,14 @@
 #endif
 
 #ifdef CCNL_CONTIKI
+  // #include "ccn-lite-contiki.h"
+  #define SOCKADDR_MAX_DATA_LEN   (26)
+  typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
 
-// #define SOCKADDR_MAX_DATA_LEN   (26)
-//
-// typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
-// typedef uint16_t in_port_t;         /**< Internet port type */
-// typedef uint32_t in_addr_t;         /**< IPv4 address type */
-//
-// /**
-//  * IPv4 address structure type.
-//  */
-// struct in_addr {
-//     in_addr_t s_addr;           /**< an IPv4 address */
-// };
-//
-// /**
-//  * @brief   IPv6 address structure type.
-//  */
-// struct in6_addr {
-//     uint8_t s6_addr[16];        /**< unsigned 8-bit integer array */
-// };
-//
-// /**
-//  * @brief   Used to define the socket address.
-//  */
-// struct sockaddr {
-//     sa_family_t sa_family;                  /**< Address family */
-//     char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
-// };
-//
-// /**
-//  * @brief   Implementation based socket address table.
-//  * @extends struct sockaddr
-//  */
-// struct sockaddr_storage {
-//     sa_family_t ss_family;                  /**< Address family */
-//     uint8_t ss_data[SOCKADDR_MAX_DATA_LEN]; /**< Socket address */
-// };
-// /**
-//  * @brief   IPv4 socket address type.
-//  * @extends struct sockaddr
-//  */
-// struct sockaddr_in {
-//     sa_family_t     sin_family; /**< Protocol family, always AF_INET */
-//     in_port_t       sin_port;   /**< Port number */
-//     struct in_addr  sin_addr;   /**< IPv4 address */
-// };
-//
-// /**
-//  * IPv6 socket address type.
-//  * @extends struct sockaddr
-//  */
-// struct sockaddr_in6 {
-//     /**
-//      * Protocol family, always AF_INET6. Member of struct sockaddr_in6
-//      */
-//     int             sin6_family;    /**< Protocol family, always AF_INET6 */
-//     in_port_t       sin6_port;      /**< Port number */
-//     uint32_t        sin6_flowinfo;  /**< IPv6 traffic class and flow information */
-//     struct in6_addr sin6_addr;      /**< IPv6 address */
-//     uint32_t        sin6_scope_id;  /**< Set of interfaces for a scope */
-// };
-//
-// /**
-//  * @brief   IPv6 multicast request.
-//  */
-// struct ipv6_mreq {
-//     struct in6_addr ipv6mr_multiaddr;   /**< an IPv6 multicast address */
-//     unsigned        ipv6mr_interface;   /**< interface index, leave 0 for default */
-// };
+  struct sockaddr {
+      sa_family_t sa_family;                  /**< Address family */
+      char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
+  };
 
 #endif
 // ----------------------------------------------------------------------
