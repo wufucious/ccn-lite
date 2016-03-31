@@ -50,6 +50,10 @@
 #define CCNL_LLADDR_STR_MAX_LEN    (3 * 6)
 #endif
 
+#ifdef CONTIKI
+#define	 CCNL_CONTIKI
+#endif
+
 #ifdef CCNL_CONTIKI
   // #include "ccn-lite-contiki.h"
   #define SOCKADDR_MAX_DATA_LEN   (26)

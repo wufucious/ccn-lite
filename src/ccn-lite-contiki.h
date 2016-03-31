@@ -1,6 +1,8 @@
 #ifndef CCN_LITE_CONTIKI_H
 #define CCN_LITE_CONTIKI_H
 
+#define CCNL_CONTIKI
+
 #include <assert.h>//riot
 // #include <ctype.h>
 // #include <errno.h>
@@ -165,17 +167,17 @@
 //by test, contiki running on arm cortex m3 is little endian machine
 #define HTONS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
 #define HTONL(n) (((uint32_t)HTONS(n) << 16) | HTONS((uint32_t)(n) >> 16))
-uint16_t
-ntohs(uint16_t val)
-{
-  return HTONS(val);
-}
 
-uint32_t
-ntohl(uint32_t val)
-{
-  return HTONL(val);
-}
+uint16_t ntohs(uint16_t val);
+uint32_t ntohl(uint32_t val);
 /*---------------------------------------------------------------------------*/
-
+#define AF_PACKET 1
+#define AF_INET   2
+#define AF_INET6  3
+#define AF_UNIX   4
+/*---------------------------------------------------------------------------*/
+int
+ccnl_send_interest(/*int suite,*/ char *name, /*uint8_t *addr,
+                               size_t addr_len,*/ unsigned int *chunknum,
+                               unsigned char *buf, size_t buf_len)
 #endif /* CCN_LITE_CONTIKI_H */

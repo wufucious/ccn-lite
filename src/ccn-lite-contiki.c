@@ -64,70 +64,6 @@
 // #define USE_SUITE_NDNTLV //move to ccnl-defs.h
 #define NEEDS_PREFIX_MATCHING
 
-// ----------------------------------------------------------------------
-// "replacement lib"
-
-// #define FATAL   0 // FATAL		//riot
-// #define ERROR   1 // ERROR
-// #define WARNING 2 // WARNING
-// #define INFO    3 // INFO
-// #define DEBUG   4 // DEBUG
-// #define TRACE   5 // TRACE
-// #define VERBOSE 6 // VERBOSE
-//
-// /*riot*/
-// #define DEBUGMSG(LVL, ...) do {       \
-//         if ((LVL)>debug_level) break;   \
-//         fprintf(stderr, __VA_ARGS__);   \
-//     } while (0)
-// # define DEBUGMSG_CORE(...) DEBUGMSG(__VA_ARGS__)
-// # define DEBUGMSG_CFWD(...) DEBUGMSG(__VA_ARGS__)
-// # define DEBUGMSG_CUTL(...) DEBUGMSG(__VA_ARGS__)
-// # define DEBUGMSG_PIOT(...) DEBUGMSG(__VA_ARGS__)
-//
-// #define DEBUGSTMT(LVL, ...) do { \
-//         if ((LVL)>debug_level) break; \
-//         __VA_ARGS__; \
-//      } while (0)
-//
-// #define TRACEIN(...)                    do {} while(0)
-// #define TRACEOUT(...)                   do {} while(0)
-//
-// #define CONSTSTR(s)                     s
-//
-// #define ccnl_malloc(s)                  malloc(s)
-// #define ccnl_calloc(n,s)                calloc(n,s)
-// #define ccnl_realloc(p,s)               realloc(p,s)
-// #define ccnl_free(p)                    free(p)
-//
-// #define free_2ptr_list(a,b)     ccnl_free(a), ccnl_free(b)
-// #define free_3ptr_list(a,b,c)   ccnl_free(a), ccnl_free(b), ccnl_free(c)
-// #define free_4ptr_list(a,b,c,d) ccnl_free(a), ccnl_free(b), ccnl_free(c), ccnl_free(d);
-// #define free_5ptr_list(a,b,c,d,e) ccnl_free(a), ccnl_free(b), ccnl_free(c), ccnl_free(d), ccnl_free(e);
-//
-// #define free_prefix(p)  do{ if(p) \
-//                 free_5ptr_list(p->bytes,p->comp,p->complen,p->chunknum,p); } while(0)
-// #define free_content(c) do{ /* free_prefix(c->name); */ free_packet(c->pkt); \
-//                         ccnl_free(c); } while(0)
-//
-// #define ccnl_frag_new(a,b)                      NULL
-// #define ccnl_frag_destroy(e)                    do {} while(0)
-//
-// #define ccnl_sched_destroy(s)           do {} while(0)
-//
-// #define ccnl_mgmt(r,b,p,f)              -1
-//
-// #define ccnl_nfn_monitor(a,b,c,d,e)     do{}while(0)
-//
-// #define ccnl_app_RX(x,y)                do{}while(0)
-//
-// #define ccnl_close_socket(s)            close(s)
-//
-// #define compute_ccnx_digest(b) NULL
-// #define local_producer(...)             0
-// /*riot*/
-//----------------------------------------------------------------------
-//riot
 #include "ccnl-defs.h"
 #include "ccnl-core.h"
 
@@ -288,6 +224,7 @@ ccnl_buf_new(void *data, int len)
 
 int debug_level;												//riot redefined in ccnl-common.c
 struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
+struct ccnl_face_s *loopback_face;      //riot add
 
 #include "ccnl-core.c"
 
@@ -451,9 +388,192 @@ struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 //
 //     return 0;
 // }
-int main(int argc, char const *argv[]) {
-  int suite = CCNL_SUITE_NDNTLV;
-  /* code */
-  return 0;
+int suite = CCNL_SUITE_NDNTLV;
+/*---------------------------------------------------------------------------*/
+uint16_t
+ntohs(uint16_t val)
+{
+  return HTONS(val);
 }
+
+uint32_t
+ntohl(uint32_t val)
+{
+  return HTONL(val);
+}
+/*---------------------------------------------------------------------------*/
+// int main(int argc, char const *argv[]) {
+//   // suite = CCNL_SUITE_NDNTLV;
+//   /* code */
+//   ccnl_core_init();
+//   printf("%s\n","hello world" );
+//   return 0;
+// }
 // eof
+typedef int (*ccnl_mkInterestFunc)(struct ccnl_prefix_s*, int*, unsigned char*, int);
+typedef int (*ccnl_isContentFunc)(unsigned char*, int);
+// extern ccnl_mkInterestFunc ccnl_suite2mkInterestFunc(int suite);
+// extern ccnl_isContentFunc ccnl_suite2isContentFunc(int suite);
+
+/*------copy from ccnl-common.c------*/
+#ifdef USE_SUITE_NDNTLV
+
+//#ifdef NEEDS_PACKET_CRAFTING
+int
+ndntlv_mkInterest(struct ccnl_prefix_s *name, int *nonce,
+                  unsigned char *out, int outlen)
+{
+    int len, offset;
+
+    offset = outlen;
+    len = ccnl_ndntlv_prependInterest(name, -1, nonce, &offset, out);
+    if (len > 0)
+        memmove(out, out + offset, len);
+
+    return len;
+}
+//#endif // NEEDS_PACKET_CRAFTING
+
+int ndntlv_isData(unsigned char *buf, int len)
+{
+    int typ;
+    int vallen;
+
+    if (len < 0 || ccnl_ndntlv_dehead(&buf, &len, (int*) &typ, &vallen))
+        return -1;
+    if (typ != NDN_TLV_Data)
+        return 0;
+    return 1;
+}
+#endif // USE_SUITE_NDNTLV
+
+ccnl_mkInterestFunc
+ccnl_suite2mkInterestFunc(int suite)
+{
+    switch(suite) {
+#ifdef USE_SUITE_CCNB
+    case CCNL_SUITE_CCNB:
+        return &ccnl_ccnb_fillInterest;
+#endif
+#ifdef USE_SUITE_CCNTLV
+    case CCNL_SUITE_CCNTLV:
+        return &ccntlv_mkInterest;
+#endif
+#ifdef USE_SUITE_CISTLV
+    case CCNL_SUITE_CISTLV:
+        return &cistlv_mkInterest;
+#endif
+#ifdef USE_SUITE_IOTTLV
+    case CCNL_SUITE_IOTTLV:
+        return &iottlv_mkRequest;
+#endif
+#ifdef USE_SUITE_NDNTLV
+    case CCNL_SUITE_NDNTLV:
+        return &ndntlv_mkInterest;
+#endif
+    }
+
+    DEBUGMSG(WARNING, "unknown suite %d in %s:%d\n",
+                      suite, __func__, __LINE__);
+    return NULL;
+}
+
+ccnl_isContentFunc
+ccnl_suite2isContentFunc(int suite)
+{
+    switch(suite) {
+#ifdef USE_SUITE_CCNB
+    case CCNL_SUITE_CCNB:
+        return &ccnb_isContent;
+#endif
+#ifdef USE_SUITE_CCNTLV
+    case CCNL_SUITE_CCNTLV:
+        return &ccntlv_isData;
+#endif
+#ifdef USE_SUITE_CISTLV
+    case CCNL_SUITE_CISTLV:
+        return &cistlv_isData;
+#endif
+#ifdef USE_SUITE_IOTTLV
+    case CCNL_SUITE_IOTTLV:
+        return &iottlv_isReply;
+#endif
+#ifdef USE_SUITE_NDNTLV
+    case CCNL_SUITE_NDNTLV:
+        return &ndntlv_isData;
+#endif
+    }
+
+    DEBUGMSG(WARNING, "unknown suite %d in %s:%d\n",
+                      suite, __func__, __LINE__);
+    return NULL;
+}
+
+int
+ccnl_send_interest(/*int suite,*/ char *name, /*uint8_t *addr,
+                               size_t addr_len,*/ unsigned int *chunknum,
+                               unsigned char *buf, size_t buf_len)
+
+{
+    struct ccnl_prefix_s *prefix;
+
+    if (suite != CCNL_SUITE_NDNTLV) {
+        DEBUGMSG(WARNING, "Suite not supported by Contiki!");
+        return -1;
+    }
+
+    ccnl_mkInterestFunc mkInterest;
+    ccnl_isContentFunc isContent;
+
+    mkInterest = ccnl_suite2mkInterestFunc(suite);
+    isContent = ccnl_suite2isContentFunc(suite);
+
+    if (!mkInterest || !isContent) {
+        DEBUGMSG(WARNING, "No functions for this suite were found!");
+        return(-1);
+    }
+
+    prefix = ccnl_URItoPrefix(name, suite, NULL, chunknum);
+
+    if (!prefix) {
+        DEBUGMSG(ERROR, "prefix could not be created!\n");
+        return -1;
+    }
+
+    // int nonce = random();
+    srand ( time(NULL) );
+    int nonce = rand();
+    /* TODO: support other transports than AF_PACKET */
+    // sockunion sun;
+    // sun.sa.sa_family = AF_PACKET;//TODO:which AF should I choose?
+    // memcpy(&(sun.linklayer.sll_addr), addr, addr_len);
+    // sun.linklayer.sll_halen = addr_len;
+
+    // struct ccnl_face_s *fibface = ccnl_get_face_or_create(&theRelay, 0, &sun.sa, sizeof(sun.linklayer));
+    // fibface->flags |= CCNL_FACE_FLAGS_STATIC;
+    // ccnl_add_fib_entry(&theRelay, prefix, fibface);
+
+    DEBUGMSG(DEBUG, "nonce: %i\n", nonce);
+
+    int len = mkInterest(prefix, &nonce, buf, buf_len);
+
+    unsigned char *start = buf;
+    unsigned char *data = buf;
+    struct ccnl_pkt_s *pkt;
+
+    int typ;
+    int int_len;
+
+    /* TODO: support other suites */
+    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
+        DEBUGMSG(WARNING, "  invalid packet format\n");
+        return -1;
+    }
+    pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
+
+    struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
+    ccnl_interest_append_pending(i, loopback_face);
+    ccnl_interest_propagate(&theRelay, i);
+
+    return 0;
+}
