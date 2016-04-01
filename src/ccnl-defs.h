@@ -60,7 +60,7 @@
 #define CCNL_DEFAULT_MAX_CACHE_ENTRIES  0   // means: no content caching
 #define CCNL_MAX_NONCES                 256 // for detected dups
 
-#define USE_SUITE_NDNTLV    //TODO:here is a problem, #define USE_SUITE_NDNTLV in ccn-lite-contiki.c before this file not work?! why again?
+#define USE_SUITE_NDNTLV    //TODO:here is a problem, #define USE_SUITE_NDNTLV other where not work， why?
 
 enum {
 #ifdef USE_SUITE_CCNB
