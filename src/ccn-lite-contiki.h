@@ -165,17 +165,9 @@
 //by test, contiki running on arm cortex m3 is little endian machine
 #define HTONS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
 #define HTONL(n) (((uint32_t)HTONS(n) << 16) | HTONS((uint32_t)(n) >> 16))
-uint16_t
-ntohs(uint16_t val)
-{
-  return HTONS(val);
-}
 
-uint32_t
-ntohl(uint32_t val)
-{
-  return HTONL(val);
-}
+uint16_t ntohs(uint16_t val);
+uint32_t ntohl(uint32_t val);
 /*---------------------------------------------------------------------------*/
 
 #endif /* CCN_LITE_CONTIKI_H */

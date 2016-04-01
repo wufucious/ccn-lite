@@ -387,9 +387,16 @@ struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 //
 //     return 0;
 // }
-int main(int argc, char const *argv[]) {
-  int suite = CCNL_SUITE_NDNTLV;
-  /* code */
-  return 0;
-}
 // eof
+
+int suite = CCNL_SUITE_NDNTLV;
+
+uint16_t ntohs(uint16_t val)
+{
+  return HTONS(val);
+}
+
+uint32_t ntohl(uint32_t val)
+{
+  return HTONL(val);
+}
