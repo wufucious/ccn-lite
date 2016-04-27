@@ -24,7 +24,28 @@
 #include "ccnl-pkt-ndntlv.h"
 
 #ifdef USE_SUITE_NDNTLV
+// ----------------------------------------------------------------------
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
 
+#include "lib/memb.h"
+
+//MEMB(pkt_memb, struct ccnl_pkt_s, 1);
+
+//#define CNT 5						//ccn name's component number
+//struct unsigned_char_ptr_ptr
+//{
+//	unsigned char** comp;
+//};
+//MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
+//MEMB(chunknum, struct int_ptr, 1);
+#endif
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+
+#include "lib/mmem.h"
+struct mmem ndntlv_nonce;
+struct mmem pkt_buf;
+#endif
 // ----------------------------------------------------------------------
 // packet parsing
 
@@ -88,10 +109,16 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
 #endif
 
     DEBUGMSG(DEBUG, "ccnl_ndntlv_bytes2pkt len=%d\n", *datalen);
-
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+    memb_init(&pkt_memb);
+    pkt=memb_alloc(&pkt_memb);
+	if (!pkt)
+	    return NULL;
+#else
     pkt = (struct ccnl_pkt_s*) ccnl_calloc(1, sizeof(*pkt));
     if (!pkt)
         return NULL;
+#endif
 
 #ifdef USE_HMAC256
     pkt->hmacStart = start;
@@ -142,10 +169,15 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
                 if (typ == NDN_TLV_NameComponent &&
                             p->compcnt < CCNL_MAX_NAME_COMP) {
                     if(cp[0] == NDN_Marker_SegmentNumber) {
-                      p->chunknum = (int*) ccnl_malloc(sizeof(int));
-                        // TODO: requires ccnl_ndntlv_includedNonNegInt which includes the length of the marker
-                        // it is implemented for encode, the decode is not yet implemented
-                        *p->chunknum = ccnl_ndntlv_nonNegInt(cp + 1, i - 1);
+					#ifdef CCNL_CONTIKI_MEMB_DEBUG
+                    	memb_init(&chunknum);
+                    	p->chunknum=memb_alloc(&chunknum);
+                    #else
+                    	p->chunknum = (int*) ccnl_malloc(sizeof(int));
+					#endif
+                    // TODO: requires ccnl_ndntlv_includedNonNegInt which includes the length of the marker
+                    // it is implemented for encode, the decode is not yet implemented
+                    *p->chunknum = ccnl_ndntlv_nonNegInt(cp + 1, i - 1);
                     }
                     p->comp[p->compcnt] = cp;
                     p->complen[p->compcnt] = i;
@@ -194,7 +226,11 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
             }
             break;
         case NDN_TLV_Nonce:
+    #ifdef CCNL_CONTIKI_MMEM_DEBUG
+        	pkt->s.ndntlv.nonce = ccnl_buf_new_mmem(&ndntlv_nonce,*data, len);
+	#else
             pkt->s.ndntlv.nonce = ccnl_buf_new(*data, len);
+	#endif
             break;
         case NDN_TLV_Scope:
             pkt->s.ndntlv.scope = ccnl_ndntlv_nonNegInt(*data, len);
@@ -271,7 +307,11 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
         goto Bail;
 
     pkt->pfx = p;
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+    pkt->buf = ccnl_buf_new_mmem(&pkt_buf, start, *data - start);
+#else
     pkt->buf = ccnl_buf_new(start, *data - start);
+#endif
     if (!pkt->buf)
         goto Bail;
     // carefully rebase ptrs to new buf because of 64bit pointers:

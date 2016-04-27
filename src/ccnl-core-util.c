@@ -25,7 +25,43 @@
 //#define CCNL_CORE_UTIL_H
 
 #include "ccnl-core.h"
-
+//// ----------------------------------------------------------------------
+//#ifdef CCNL_CONTIKI_MEMB_DEBUG
+//
+//#include "lib/memb.h"
+//
+//MEMB(prefix_memb, struct ccnl_prefix_s, 1);
+///* TODO: support online generated variable CNT and LEN */
+//#define CNT 5						//ccn name's component number
+//struct unsigned_char_ptr_ptr
+//{
+//	unsigned char** comp;
+//};
+//MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
+//
+//struct int_ptr
+//{
+//	int* complen;
+//};
+//MEMB(complen, struct int_ptr, 1);
+//
+//#define LEN	19
+//struct unsigned_char_ptr
+//{
+//	unsigned char* bytes;
+//};
+//MEMB(bytes, struct unsigned_char_ptr, LEN);
+//
+//MEMB(chunknum, struct int_ptr, 1);
+//
+//int free_prefix_memb(struct ccnl_prefix_s* p)
+//{
+//	if (memb_free(&chunknum,p->chunknum)||memb_free(&bytes,p->bytes)
+//			||memb_free(&complen,p->complen)||memb_free(&comp,p->comp)
+//			||memb_free(&prefix_memb,p)) return -1;//dummy -1 and 0
+//	return 0;
+//}
+//#endif
 // ----------------------------------------------------------------------
 // collect the USE_* macros in a string
 
@@ -360,15 +396,30 @@ ccnl_isSuite(int suite)
 struct ccnl_prefix_s*
 ccnl_prefix_new(int suite, int cnt)
 {
-    struct ccnl_prefix_s *p;
+	struct ccnl_prefix_s *p;
 
-    p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
+	#ifdef CCNL_CONTIKI_MEMB_DEBUG
+	  memb_init(&prefix_memb);
+	  p=memb_alloc(&prefix_memb);
+	  if (!p)
+	    return NULL;
+	  memb_init(&comp);
+	  p->comp = memb_alloc(&comp);
+	  memb_init(&complen);
+	  p->complen = memb_alloc(&complen);
+	#else
+	  p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
     if (!p)
         return NULL;
     p->comp = (unsigned char**) ccnl_malloc(cnt * sizeof(unsigned char*));
     p->complen = (int*) ccnl_malloc(cnt * sizeof(int));
+	#endif
     if (!p->comp || !p->complen) {
-        free_prefix(p);
+		#ifdef CCNL_CONTIKI_MEMB_DEBUG
+		  free_prefix_memb(p);
+    	#else
+          free_prefix(p);
+		#endif
         return NULL;
     }
     p->compcnt = cnt;
@@ -550,11 +601,21 @@ ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, unsigned int *chunknum)
         len += cnt * 4; // add TL size
 #endif
 
+	#ifdef CCNL_CONTIKI_MEMB_DEBUG
+	memb_init(&bytes);
+	p->bytes=memb_alloc(&bytes);
+    if (!p->bytes) {
+		free_prefix_memb(p);
+        return NULL;
+    }
+	#else
     p->bytes = (unsigned char*) ccnl_malloc(len);
     if (!p->bytes) {
         free_prefix(p);
         return NULL;
     }
+    #endif
+
 
     for (i = 0, len = 0, tlen = 0; i < cnt; i++) {
         int isnfnfcomp = i == (cnt-1) && nfnexpr && *nfnexpr;
@@ -1033,6 +1094,12 @@ ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr, int ccntlv_skip,
 #else
 # define PREFIX_BUFSIZE 2048
 #endif
+//--------------------------------
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+#include "lib/memb.h"
+MEMB(buf_memb, struct char_ptr, PREFIX_BUFSIZE);
+#endif
+//--------------------------------
 
     if (!pr)
         return NULL;
@@ -1051,8 +1118,13 @@ ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr, int ccntlv_skip,
     else
         buf = prefix_buf2;
     */
-    char *buf = (char*) ccnl_malloc(PREFIX_BUFSIZE);
-    if (buf == NULL) {
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+	memb_init(&buf_memb);
+	char *buf =	memb_alloc(&buf_memb);
+#else
+	char *buf = (char*) ccnl_malloc(PREFIX_BUFSIZE);
+#endif
+        if (buf == NULL) {
         DEBUGMSG_CUTL(ERROR, "ccnl_prefix_to_path_detailed: malloc failed, exiting\n");
         return NULL;
     }

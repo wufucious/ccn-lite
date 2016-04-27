@@ -27,6 +27,27 @@
 #ifndef USE_NFN
 # define ccnl_nfn_interest_remove(r,i)  ccnl_interest_remove(r,i)
 #endif
+// ----------------------------------------------------------------------
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+
+#include "lib/memb.h"
+
+MEMB(ccnl_interest_memb, struct ccnl_interest_s, 1);
+
+MEMB(ccnl_pendint_memb, struct ccnl_pendint_s, 1);
+
+# define PREFIX_BUFSIZE_MEMB 50//copy from ccnl-core-util.c, needed now
+//
+MEMB(buf_memb, struct char_ptr, PREFIX_BUFSIZE_MEMB);
+
+//struct unsigned_char_ptr_ptr
+//{
+//	unsigned char** comp;
+//};
+//MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
+//MEMB(chunknum, struct int_ptr, 1);
+#endif
+// ----------------------------------------------------------------------
 
 // forward reference:
 void ccnl_face_CTS(struct ccnl_relay_s *ccnl, struct ccnl_face_s *f);
@@ -393,14 +414,23 @@ struct ccnl_interest_s*
 ccnl_interest_new(struct ccnl_relay_s *ccnl, struct ccnl_face_s *from,
                   struct ccnl_pkt_s **pkt)
 {
-    struct ccnl_interest_s *i = (struct ccnl_interest_s *) ccnl_calloc(1,
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+    memb_init(&ccnl_interest_memb);
+    struct ccnl_interest_s *i = memb_alloc(&ccnl_interest_memb);
+#else
+	struct ccnl_interest_s *i = (struct ccnl_interest_s *) ccnl_calloc(1,
                                             sizeof(struct ccnl_interest_s));
-    char *s = NULL;
+#endif
+	char *s = NULL;
     DEBUGMSG_CORE(TRACE,
                   "ccnl_new_interest(prefix=%s, suite=%s)\n",
                   (s = ccnl_prefix_to_path((*pkt)->pfx)),
                   ccnl_suite2str((*pkt)->pfx->suite));
-    ccnl_free(s);
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+    memb_free(&buf_memb,s);
+#else
+	ccnl_free(s);
+#endif
 
     if (!i)
         return NULL;
@@ -429,7 +459,12 @@ ccnl_interest_append_pending(struct ccnl_interest_s *i,
         }
         last = pi;
     }
+#ifdef CCNL_CONTIKI_MEMB_DEBUG							//TODO: later may need to switch to mmem
+    memb_init(&ccnl_pendint_memb);
+    pi = memb_alloc(&ccnl_pendint_memb);
+#else
     pi = (struct ccnl_pendint_s *) ccnl_calloc(1,sizeof(struct ccnl_pendint_s));
+#endif
     if (!pi) {
         DEBUGMSG_CORE(DEBUG, "  no mem\n");
         return -1;

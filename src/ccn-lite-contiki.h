@@ -23,9 +23,11 @@
 #define ERROR   1 // ERROR
 #define WARNING 2 // WARNING
 #define INFO    3 // INFO
-#define DEBUG   4 // DEBUG
+#define DEBUG   4 // DEBUG		//conflicts with uip-debug.h
 #define TRACE   5 // TRACE
 #define VERBOSE 6 // VERBOSE
+
+//#define debug_level  VERBOSE
 
 /*riot*/
 #define DEBUGMSG(LVL, ...) do {       \
@@ -169,5 +171,58 @@
 uint16_t ntohs(uint16_t val);
 uint32_t ntohl(uint32_t val);
 /*---------------------------------------------------------------------------*/
+#define AF_PACKET 1
+#define AF_INET   2
+#define AF_INET6  3
+#define AF_UNIX   4
+/*---------------------------------------------------------------------------*/
+int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
+                      unsigned char *buf, size_t buf_len);
+
+// void *ccnl_malloc(size_t size); // Allocate uninitialized memory.
+// void *ccnl_calloc(size_t number, size_t size); // Allocate zero-initialized memory.
+// void *ccnl_realloc(void *ptr, size_t size); // Change the size of an allocated object.
+// void ccnl_free(void *ptr); // Free memory.
+/*---------------------------------------------------------------------------*/
+#define CCNL_CONTIKI_MEMB_DEBUG
+#define CCNL_CONTIKI_MMEM_DEBUG
+// ----------------------------------------------------------------------
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+
+#include "lib/memb.h"
+
+MEMB(prefix_memb, struct ccnl_prefix_s, 1);
+/* TODO: support online generated variable CNT and LEN */
+#define CNT 5						//ccn name's component number
+struct unsigned_char_ptr_ptr
+{
+	unsigned char** comp;
+};
+MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
+
+struct int_ptr
+{
+	int* complen;
+};
+MEMB(complen, struct int_ptr, 1);
+
+#define LEN	19
+struct unsigned_char_ptr
+{
+	unsigned char* bytes;
+};
+MEMB(bytes, struct unsigned_char_ptr, LEN);
+
+MEMB(chunknum, struct int_ptr, 1);
+
+int free_prefix_memb(struct ccnl_prefix_s* p);
+
+MEMB(pkt_memb, struct ccnl_pkt_s, 1);
+
+struct char_ptr
+{
+	char* buf;
+};
+#endif
 
 #endif /* CCN_LITE_CONTIKI_H */
