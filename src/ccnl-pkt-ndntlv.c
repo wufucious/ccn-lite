@@ -29,15 +29,14 @@
 
 #include "lib/memb.h"
 
-//MEMB(pkt_memb, struct ccnl_pkt_s, 1);
+MEMB(pkt_memb, struct ccnl_pkt_s, 1);
 
 //#define CNT 5						//ccn name's component number
 //struct unsigned_char_ptr_ptr
 //{
 //	unsigned char** comp;
-//};
 //MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
-//MEMB(chunknum, struct int_ptr, 1);
+MEMB(chunknum, int, 1);
 #endif
 
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
@@ -309,6 +308,7 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
     pkt->pfx = p;
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
     pkt->buf = ccnl_buf_new_mmem(&pkt_buf, start, *data - start);
+//    pkt->buf = ccnl_buf_new_mmem(&ndntlv_nonce, start, *data - start);
 #else
     pkt->buf = ccnl_buf_new(start, *data - start);
 #endif
@@ -326,7 +326,11 @@ ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start,
 
     return pkt;
 Bail:
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+// TODO:
+#else
     free_packet(pkt);
+#endif
     return NULL;
 }
 

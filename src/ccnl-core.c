@@ -36,9 +36,9 @@ MEMB(ccnl_interest_memb, struct ccnl_interest_s, 1);
 
 MEMB(ccnl_pendint_memb, struct ccnl_pendint_s, 1);
 
-# define PREFIX_BUFSIZE_MEMB 50//copy from ccnl-core-util.c, needed now
-//
-MEMB(buf_memb, struct char_ptr, PREFIX_BUFSIZE_MEMB);
+//# define PREFIX_BUFSIZE_MEMB 50//copy from ccnl-core-util.c, needed now
+////
+//MEMB(buf_memb, char, PREFIX_BUFSIZE_MEMB);
 
 //struct unsigned_char_ptr_ptr
 //{
@@ -427,7 +427,7 @@ ccnl_interest_new(struct ccnl_relay_s *ccnl, struct ccnl_face_s *from,
                   (s = ccnl_prefix_to_path((*pkt)->pfx)),
                   ccnl_suite2str((*pkt)->pfx->suite));
 #ifdef CCNL_CONTIKI_MEMB_DEBUG
-    memb_free(&buf_memb,s);
+//    memb_free(&buf_memb,s);
 #else
 	ccnl_free(s);
 #endif

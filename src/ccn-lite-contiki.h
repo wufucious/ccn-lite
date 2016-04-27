@@ -23,7 +23,7 @@
 #define ERROR   1 // ERROR
 #define WARNING 2 // WARNING
 #define INFO    3 // INFO
-#define DEBUG   4 // DEBUG		//conflicts with uip-debug.h
+#define DEBUG   3//4 // DEBUG		//conflicts with uip-debug.h
 #define TRACE   5 // TRACE
 #define VERBOSE 6 // VERBOSE
 
@@ -191,38 +191,50 @@ int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
 
 #include "lib/memb.h"
 
-MEMB(prefix_memb, struct ccnl_prefix_s, 1);
+//MEMB(prefix_memb, struct ccnl_prefix_s, 1);
 /* TODO: support online generated variable CNT and LEN */
-#define CNT 5						//ccn name's component number
-struct unsigned_char_ptr_ptr
-{
-	unsigned char** comp;
-};
-MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
+//#define CNT 5						//ccn name's component number
+//struct unsigned_char_ptr_ptr
+//{
+//	unsigned char** comp;
+//};
+//MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
 
-struct int_ptr
-{
-	int* complen;
-};
-MEMB(complen, struct int_ptr, 1);
+//struct int_ptr
+//{
+//	int* complen;
+//};
+//struct int_native
+//{
+//	int complen;
+//};
+//MEMB(complen, struct int_ptr, CNT);
 
-#define LEN	19
-struct unsigned_char_ptr
-{
-	unsigned char* bytes;
-};
-MEMB(bytes, struct unsigned_char_ptr, LEN);
+//#define LEN	19
+//struct unsigned_char_ptr
+//{
+//	unsigned char* bytes;
+//};
+//MEMB(bytes, struct unsigned_char_ptr, LEN);
+//
+//MEMB(chunknum, struct int_ptr, 1);
 
-MEMB(chunknum, struct int_ptr, 1);
+//int free_prefix_memb(struct ccnl_prefix_s* p);
 
-int free_prefix_memb(struct ccnl_prefix_s* p);
+//MEMB(pkt_memb, struct ccnl_pkt_s, 1);
 
-MEMB(pkt_memb, struct ccnl_pkt_s, 1);
+//struct char_ptr
+//{
+//	char* buf;
+//};
+#endif
 
-struct char_ptr
-{
-	char* buf;
-};
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+
+#include "lib/mmem.h"
+
+struct mmem mmem_header;
+
 #endif
 
 #endif /* CCN_LITE_CONTIKI_H */

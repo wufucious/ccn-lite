@@ -61,6 +61,14 @@
   };
 
 #endif
+
+#ifdef __GNUC__
+#define BYTE_ALIGNED __attribute__ ((__packed__))
+#else
+#define BYTE_ALIGNED
+#endif
+
+#define CCNL_BYTE_ALIGNED						/*TODO: this will increase text size and not reduce data and bss size, why?*/
 // ----------------------------------------------------------------------
 
 typedef union {
@@ -152,15 +160,21 @@ struct ccnl_relay_s {
     char *crypto_path;
   */
 };
-
+#ifdef CCNL_BYTE_ALIGNED
+struct BYTE_ALIGNED ccnl_buf_s {
+#else
 struct ccnl_buf_s {
-    struct ccnl_buf_s *next;
+#endif
+	struct ccnl_buf_s *next;
     ssize_t datalen;
     unsigned char data[1];
 };
-
+//#ifdef CCNL_BYTE_ALIGNED
+//struct __attribute__ ((__packed__)) ccnl_prefix_s {
+//#else
 struct ccnl_prefix_s {
-    unsigned char **comp;
+//#endif
+	unsigned char **comp;
     int *complen;
     int compcnt;
     char suite;

@@ -26,42 +26,40 @@
 
 #include "ccnl-core.h"
 //// ----------------------------------------------------------------------
-//#ifdef CCNL_CONTIKI_MEMB_DEBUG
-//
-//#include "lib/memb.h"
-//
-//MEMB(prefix_memb, struct ccnl_prefix_s, 1);
-///* TODO: support online generated variable CNT and LEN */
-//#define CNT 5						//ccn name's component number
-//struct unsigned_char_ptr_ptr
-//{
-//	unsigned char** comp;
-//};
-//MEMB(comp, struct unsigned_char_ptr_ptr, CNT);
-//
-//struct int_ptr
-//{
-//	int* complen;
-//};
-//MEMB(complen, struct int_ptr, 1);
-//
-//#define LEN	19
-//struct unsigned_char_ptr
-//{
-//	unsigned char* bytes;
-//};
-//MEMB(bytes, struct unsigned_char_ptr, LEN);
-//
+#define CCNL_CONTIKI_MEMB_DEBUG
+
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+
+#include "lib/memb.h"
+
+MEMB(prefix_memb, struct ccnl_prefix_s, 1);
+
+/* TODO: support online generated variable CNT */
+#define CNT 5						//ccn name's component number
+MEMB(comp, unsigned char*, CNT);
+MEMB(complen, int, CNT);
+
 //MEMB(chunknum, struct int_ptr, 1);
-//
-//int free_prefix_memb(struct ccnl_prefix_s* p)
-//{
-//	if (memb_free(&chunknum,p->chunknum)||memb_free(&bytes,p->bytes)
-//			||memb_free(&complen,p->complen)||memb_free(&comp,p->comp)
-//			||memb_free(&prefix_memb,p)) return -1;//dummy -1 and 0
-//	return 0;
-//}
-//#endif
+
+#endif
+
+#define CCNL_CONTIKI_MMEM_DEBUG_UTIL
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+
+#include "lib/mmem.h"
+
+//struct mmem comp_mmem;
+//struct mmem complen_mmem;
+struct mmem bytes_mmem;
+
+#elif defined(CCNL_CONTIKI_MEMB_DEBUG)
+
+#define LEN	19
+MEMB(bytes_memb, struct unsigned_char_ptr, LEN);
+
+#endif
+
 // ----------------------------------------------------------------------
 // collect the USE_* macros in a string
 
@@ -398,28 +396,51 @@ ccnl_prefix_new(int suite, int cnt)
 {
 	struct ccnl_prefix_s *p;
 
-	#ifdef CCNL_CONTIKI_MEMB_DEBUG
-	  memb_init(&prefix_memb);
-	  p=memb_alloc(&prefix_memb);
-	  if (!p)
-	    return NULL;
-	  memb_init(&comp);
-	  p->comp = memb_alloc(&comp);
-	  memb_init(&complen);
-	  p->complen = memb_alloc(&complen);
-	#else
-	  p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+	memb_init(&prefix_memb);
+	p=memb_alloc(&prefix_memb);
+	if (!p)
+		return NULL;
+#else
+	p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
     if (!p)
         return NULL;
+#endif
+
+    /*TODO: suport various CNT*/
+//#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+//        if(mmem_alloc(&comp_mmem, cnt * sizeof(unsigned char*)) == 0||mmem_alloc(&complen_mmem, cnt * sizeof(int)) == 0) {
+//        	printf("memory allocation failed\n");
+//        	return NULL;
+//        } else {
+//        	printf("memory allocation succeeded\n");
+//        	/* The cast below is safe only if the struct is packed */
+//        	p->comp = (unsigned char**) MMEM_PTR(&comp_mmem);
+//        	p->complen = (int*) MMEM_PTR(&complen_mmem);
+//        }
+//        if (!p->comp||!p->complen) {
+//    //  free_prefix_memb(p);
+//        	return NULL;
+//        }
+//#elif defined(CCNL_CONTIKI_MEMB_DEBUG)
+#if defined(CCNL_CONTIKI_MEMB_DEBUG)
+	memb_init(&comp);
+	p->comp = memb_alloc(&comp);
+	memb_init(&complen);
+	p->complen = memb_alloc(&complen);
+#else
     p->comp = (unsigned char**) ccnl_malloc(cnt * sizeof(unsigned char*));
     p->complen = (int*) ccnl_malloc(cnt * sizeof(int));
-	#endif
+#endif
+
     if (!p->comp || !p->complen) {
-		#ifdef CCNL_CONTIKI_MEMB_DEBUG
-		  free_prefix_memb(p);
-    	#else
-          free_prefix(p);
-		#endif
+#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+
+#elif defined(CCNL_CONTIKI_MEMB_DEBUG)
+//		free_prefix_memb(p);
+#else
+        free_prefix(p);
+#endif
         return NULL;
     }
     p->compcnt = cnt;
@@ -601,20 +622,33 @@ ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, unsigned int *chunknum)
         len += cnt * 4; // add TL size
 #endif
 
-	#ifdef CCNL_CONTIKI_MEMB_DEBUG
-	memb_init(&bytes);
-	p->bytes=memb_alloc(&bytes);
+#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+    if(mmem_alloc(&bytes_mmem,len) == 0) {
+    	printf("memory allocation failed\n");
+    	return NULL;
+    } else {
+    	printf("memory allocation succeeded\n");
+    }
+    	/* The cast below is safe only if the struct is packed */
+    	p->bytes = (unsigned char*) MMEM_PTR(&bytes_mmem);
     if (!p->bytes) {
-		free_prefix_memb(p);
+//  free_prefix_memb(p);
+    	return NULL;
+    }
+#elif defined(CCNL_CONTIKI_MEMB_DEBUG)
+	memb_init(&bytes_memb);
+	p->bytes=memb_alloc(&bytes_memb);
+    if (!p->bytes) {
+//		free_prefix_memb(p);
         return NULL;
     }
-	#else
+#else
     p->bytes = (unsigned char*) ccnl_malloc(len);
     if (!p->bytes) {
         free_prefix(p);
         return NULL;
     }
-    #endif
+#endif
 
 
     for (i = 0, len = 0, tlen = 0; i < cnt; i++) {
@@ -1097,7 +1131,7 @@ ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr, int ccntlv_skip,
 //--------------------------------
 #ifdef CCNL_CONTIKI_MEMB_DEBUG
 #include "lib/memb.h"
-MEMB(buf_memb, struct char_ptr, PREFIX_BUFSIZE);
+MEMB(buf_memb, char, PREFIX_BUFSIZE);
 #endif
 //--------------------------------
 

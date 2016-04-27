@@ -72,15 +72,34 @@
 
 #include "lib/memb.h"
 
-int free_prefix_memb(struct ccnl_prefix_s* p)
-{
-	if (memb_free(&chunknum,p->chunknum)||memb_free(&bytes,p->bytes)
-			||memb_free(&complen,p->complen)||memb_free(&comp,p->comp)
-			||memb_free(&prefix_memb,p)) return -1;//dummy -1 and 0
-	return 0;
-}
+//int free_prefix_memb(struct ccnl_prefix_s* p)
+//{
+//	if (memb_free(&chunknum,p->chunknum)||memb_free(&bytes,p->bytes)
+//			||memb_free(&complen,p->complen)||memb_free(&comp,p->comp)
+//			||memb_free(&prefix_memb,p)) return -1;//dummy -1 and 0
+//	return 0;
+//}
+
+#endif
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
 
 #include "lib/mmem.h"
+void mmem_reinit(struct mmem *m)//use the mmem_header to reinitial the whole mmem recursively
+{
+	if(m->next==NULL)
+	{
+		mmem_free(m);
+		return;
+
+	}
+
+//	struct mmem* n=m->next;
+
+	mmem_reinit(m->next);
+
+	mmem_free(m);
+}
 
 #endif
 
@@ -121,11 +140,11 @@ ccnl_buf_new(void *data, int len)
 }
 
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
-struct ccnl_buf_s*																		//riot
+struct ccnl_buf_s*
 ccnl_buf_new_mmem(struct mmem *mmem, void *data, int len)
 {
     struct ccnl_buf_s *b;
-    if(MMEM_PTR(mmem)!=NULL) mmem_free(mmem);
+//    if(MMEM_PTR(mmem)!=NULL) mmem_free(mmem);
     if(mmem_alloc(mmem, sizeof(struct ccnl_buf_s)+len) == 0) {
       printf("memory allocation failed\n");
       return NULL;
@@ -383,6 +402,10 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 {
     struct ccnl_prefix_s *prefix;
 
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+    mmem_alloc(&mmem_header, 0);
+#endif
+
     if (suite != CCNL_SUITE_NDNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!");
         return -1;
@@ -439,29 +462,9 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
      struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
      ccnl_interest_append_pending(i, loopback_face);
      ccnl_interest_propagate(&theRelay, i);
-
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+     mmem_reinit(&mmem_header);
+#endif
     return len;
 //	  return 0;
 }
-
-// void *ccnl_malloc(size_t size) // Allocate uninitialized memory.
-// {
-//   //  struct ccnl_prefix_s *p;
-//   //  p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
-//   //  ccnl_calloc(1, sizeof(int));
-//   //  MEMB(point, struct ccnl_prefix_s, 1);
-//   //  memb_init(&point);
-//   //  p=memb_alloc(&point);
-// }
-// void *ccnl_calloc(size_t number, size_t size) // Allocate zero-initialized memory.
-// {
-//
-// }
-// void *ccnl_realloc(void *ptr, size_t size) // Change the size of an allocated object.
-// {
-//
-// }
-// void ccnl_free(void *ptr) // Free memory.
-// {
-//
-// }
