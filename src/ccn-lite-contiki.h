@@ -179,6 +179,8 @@ uint32_t ntohl(uint32_t val);
 int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
                       unsigned char *buf, size_t buf_len);
 
+int ccnl_make_content(int suite, char *name, char *content, unsigned int *chunknum,
+                      unsigned char *buf, size_t buf_len);
 // void *ccnl_malloc(size_t size); // Allocate uninitialized memory.
 // void *ccnl_calloc(size_t number, size_t size); // Allocate zero-initialized memory.
 // void *ccnl_realloc(void *ptr, size_t size); // Change the size of an allocated object.

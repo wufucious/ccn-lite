@@ -36,6 +36,7 @@ MEMB(ccnl_interest_memb, struct ccnl_interest_s, 1);
 
 MEMB(ccnl_pendint_memb, struct ccnl_pendint_s, 1);
 
+MEMB(ccnl_content_memb, struct ccnl_content_s, 1);
 //# define PREFIX_BUFSIZE_MEMB 50//copy from ccnl-core-util.c, needed now
 ////
 //MEMB(buf_memb, char, PREFIX_BUFSIZE_MEMB);
@@ -628,9 +629,17 @@ ccnl_content_new(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s **pkt)
     char *s = NULL;
     DEBUGMSG_CORE(TRACE, "ccnl_content_new %p <%s [%d]>\n",
              (void*) *pkt, (s = ccnl_prefix_to_path((*pkt)->pfx)), ((*pkt)->pfx->chunknum)? *((*pkt)->pfx->chunknum) : -1);
+#ifndef CCNL_CONTIKI_MEMB_DEBUG
     ccnl_free(s);
+#endif
 
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+    memb_init(&ccnl_content_memb);
+    c = (struct ccnl_content_s *) memb_alloc(&ccnl_content_memb);
+#else
     c = (struct ccnl_content_s *) ccnl_calloc(1, sizeof(struct ccnl_content_s));
+#endif
+
     if (!c)
         return NULL;
     c->pkt = *pkt;
@@ -671,7 +680,9 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     DEBUGMSG_CORE(DEBUG, "ccnl_content_add2cache (%d/%d) --> %p = %s [%d]\n",
                   ccnl->contentcnt, ccnl->max_cache_entries,
                   (void*)c, (s = ccnl_prefix_to_path(c->pkt->pfx)), (c->pkt->pfx->chunknum)? *(c->pkt->pfx->chunknum) : -1);
+#ifndef CCNL_CONTIKI_MEMB_DEBUG
     ccnl_free(s);
+#endif
     for (cit = ccnl->contents; cit; cit = cit->next) {
         if (c == cit) {
             DEBUGMSG_CORE(DEBUG, "--- Already in cache ---\n");

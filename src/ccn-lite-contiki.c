@@ -465,6 +465,96 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
      mmem_reinit(&mmem_header);
 #endif
-    return len;
-//	  return 0;
+//    return len;
+	return 0;
+}
+
+int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
+                               size_t addr_len,*/ unsigned int *chunknum,
+                               unsigned char *buf, size_t buf_len)
+
+{
+    int len = strlen(content);
+    int offs = CCNL_MAX_PACKET_SIZE;
+//    unsigned char _out[CCNL_MAX_PACKET_SIZE];
+
+    struct ccnl_prefix_s *prefix;
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+    mmem_alloc(&mmem_header, 0);
+#endif
+
+    if (suite != CCNL_SUITE_NDNTLV) {
+        DEBUGMSG(WARNING, "Suite not supported by Contiki!");
+        return -1;
+    }
+
+//    ccnl_mkInterestFunc mkInterest;
+//    ccnl_isContentFunc isContent;
+//
+//    mkInterest = ccnl_suite2mkInterestFunc(suite);
+//    isContent = ccnl_suite2isContentFunc(suite);
+
+//    if (!mkInterest || !isContent) {
+//        DEBUGMSG(WARNING, "No functions for this suite were found!");
+//        return(-1);
+//    }
+
+    prefix = ccnl_URItoPrefix(name, suite, NULL, chunknum);
+
+    if (!prefix) {
+        DEBUGMSG(ERROR, "prefix could not be created!\n");
+        return -1;
+    }
+
+//    int nonce = rand();
+    /* TODO: support other transports than AF_PACKET */
+//     sockunion sun;
+//     sun.sa.sa_family = AF_PACKET;//TODO:which AF should I choose?
+//     memcpy(&(sun.linklayer.sll_addr), addr, addr_len);
+//     sun.linklayer.sll_halen = addr_len;
+//
+//     struct ccnl_face_s *fibface = ccnl_get_face_or_create(&theRelay, 0, &sun.sa, sizeof(sun.linklayer));
+//     fibface->flags |= CCNL_FACE_FLAGS_STATIC;
+//     ccnl_add_fib_entry(&theRelay, prefix, fibface);
+
+//    DEBUGMSG(DEBUG, "nonce: %i\n", nonce);
+
+//    int len = mkInterest(prefix, &nonce, buf, buf_len);
+//    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
+    len = ccnl_ndntlv_prependContent(prefix, (unsigned char*)content, len, NULL, NULL, &offs, buf);
+    if(len==-1) return -1;
+
+    unsigned char *olddata;
+    unsigned char *data = olddata = buf + offs;
+
+    int int_len;
+    unsigned typ;
+
+     /* TODO: support other suites */
+//    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
+//         DEBUGMSG(WARNING, "  invalid packet format\n");
+//         return -1;
+//     }
+//    pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
+//
+//    struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
+//    ccnl_interest_append_pending(i, loopback_face);
+//    ccnl_interest_propagate(&theRelay, i);
+    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) ||
+        typ != NDN_TLV_Data) {
+        return -1;
+    }
+
+    struct ccnl_content_s *c = 0;
+    struct ccnl_pkt_s *pk = ccnl_ndntlv_bytes2pkt(typ, olddata, &data, &len);
+    c = ccnl_content_new(&theRelay, &pk);
+    ccnl_content_add2cache(&theRelay, c);
+    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+    mmem_reinit(&mmem_header);
+#endif
+//    return len;
+	return 0;
 }
