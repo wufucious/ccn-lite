@@ -397,7 +397,7 @@ ccnl_suite2isContentFunc(int suite)
 
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
-                               unsigned char *buf, size_t buf_len)
+                               unsigned char *buf, size_t buf_len, int *lens)
 
 {
     struct ccnl_prefix_s *prefix;
@@ -444,6 +444,7 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 
     int len = mkInterest(prefix, &nonce, buf, buf_len);
     DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
+    *lens = len;
 
      unsigned char *start = buf;
      unsigned char *data = buf;
@@ -471,7 +472,7 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 
 int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
-                               unsigned char *buf, size_t buf_len)
+                               unsigned char *buf, int *lens)
 
 {
     int len = strlen(content);
@@ -524,6 +525,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 //    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
     len = ccnl_ndntlv_prependContent(prefix, (unsigned char*)content, len, NULL, NULL, &offs, buf);
     if(len==-1) return -1;
+    *lens = len;
 
     unsigned char *olddata;
     unsigned char *data = olddata = buf + offs;
@@ -556,5 +558,5 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
     mmem_reinit(&mmem_header);
 #endif
 //    return len;
-	return 0;
+	return offs;
 }
