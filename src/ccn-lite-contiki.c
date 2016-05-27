@@ -552,7 +552,8 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
     struct ccnl_pkt_s *pk = ccnl_ndntlv_bytes2pkt(typ, olddata, &data, &len);
     c = ccnl_content_new(&theRelay, &pk);
     ccnl_content_add2cache(&theRelay, c);
-    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+//    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+    c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
 
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
     mmem_reinit(&mmem_header);
