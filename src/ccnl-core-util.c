@@ -26,8 +26,6 @@
 
 #include "ccnl-core.h"
 //// ----------------------------------------------------------------------
-#define CCNL_CONTIKI_MEMB_DEBUG
-
 #ifdef CCNL_CONTIKI_MEMB_DEBUG
 
 #include "lib/memb.h"
@@ -43,9 +41,7 @@ MEMB(complen, int, CNT);
 
 #endif
 
-#define CCNL_CONTIKI_MMEM_DEBUG_UTIL
-
-#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
 
 #include "lib/mmem.h"
 
@@ -396,19 +392,19 @@ ccnl_prefix_new(int suite, int cnt)
 {
 	struct ccnl_prefix_s *p;
 
-#ifdef CCNL_CONTIKI_MEMB_DEBUG
-	memb_init(&prefix_memb);
-	p=memb_alloc(&prefix_memb);
-	if (!p)
-		return NULL;
-#else
+//#ifdef CCNL_CONTIKI_MEMB_DEBUG
+//	memb_init(&prefix_memb);
+//	p=memb_alloc(&prefix_memb);
+//	if (!p)
+//		return NULL;
+//#else
 	p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
     if (!p)
         return NULL;
-#endif
+//#endif
 
     /*TODO: suport various CNT*/
-//#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+//#ifdef CCNL_CONTIKI_MMEM_DEBUG
 //        if(mmem_alloc(&comp_mmem, cnt * sizeof(unsigned char*)) == 0||mmem_alloc(&complen_mmem, cnt * sizeof(int)) == 0) {
 //        	printf("memory allocation failed\n");
 //        	return NULL;
@@ -434,7 +430,7 @@ ccnl_prefix_new(int suite, int cnt)
 #endif
 
     if (!p->comp || !p->complen) {
-#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
 
 #elif defined(CCNL_CONTIKI_MEMB_DEBUG)
 //		free_prefix_memb(p);
@@ -622,7 +618,7 @@ ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, unsigned int *chunknum)
         len += cnt * 4; // add TL size
 #endif
 
-#ifdef CCNL_CONTIKI_MMEM_DEBUG_UTIL
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
     if(mmem_alloc(&bytes_mmem,len) == 0) {
     	printf("memory allocation failed\n");
     	return NULL;

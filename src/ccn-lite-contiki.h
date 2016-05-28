@@ -49,10 +49,11 @@
 
 #define CONSTSTR(s)                     s
 
-#define ccnl_malloc(s)                  malloc(s)
-#define ccnl_calloc(n,s)                calloc(n,s)
+#include "stdlibc/malloc.h"
+#define ccnl_malloc(s)                  malloca(s)
+#define ccnl_calloc(n,s)                malloca(n*s)
 #define ccnl_realloc(p,s)               realloc(p,s)
-#define ccnl_free(p)                    free(p)
+#define ccnl_free(p)                    freea(p)
 
 #define free_2ptr_list(a,b)     ccnl_free(a), ccnl_free(b)
 #define free_3ptr_list(a,b,c)   ccnl_free(a), ccnl_free(b), ccnl_free(c)
@@ -186,8 +187,8 @@ int ccnl_make_content(int suite, char *name, char *content, unsigned int *chunkn
 // void *ccnl_realloc(void *ptr, size_t size); // Change the size of an allocated object.
 // void ccnl_free(void *ptr); // Free memory.
 /*---------------------------------------------------------------------------*/
-#define CCNL_CONTIKI_MEMB_DEBUG
-#define CCNL_CONTIKI_MMEM_DEBUG
+//#define CCNL_CONTIKI_MEMB_DEBUG
+//#define CCNL_CONTIKI_MMEM_DEBUG
 // ----------------------------------------------------------------------
 #ifdef CCNL_CONTIKI_MEMB_DEBUG
 
