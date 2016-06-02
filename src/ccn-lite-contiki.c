@@ -281,7 +281,7 @@ ccnl_buf_new_mmem(struct mmem *mmem, void *data, int len)
 
 // ----------------------------------------------------------------------
 
-int debug_level =VERBOSE;												//riot redefined in ccnl-common.c
+int debug_level =VERBOSE;//VERBOSE;												//riot redefined in ccnl-common.c
 struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 struct ccnl_face_s *loopback_face;      //riot add
 
@@ -446,27 +446,28 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
     DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
     *lens = len;
 
-     unsigned char *start = buf;
-     unsigned char *data = buf;
-     struct ccnl_pkt_s *pkt;
-
-     int typ;
-     int int_len;
+//     unsigned char *start = buf;
+//     unsigned char *data = buf;
+//     struct ccnl_pkt_s *pkt;
+//
+//     int typ;
+//     int int_len;
 
      /* TODO: support other suites */
-     if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
-         DEBUGMSG(WARNING, "  invalid packet format\n");
-         return -1;
-     }
-     pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
-
-     struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
-     ccnl_interest_append_pending(i, loopback_face);
-     ccnl_interest_propagate(&theRelay, i);
+//     if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
+//         DEBUGMSG(WARNING, "  invalid packet format\n");
+//         return -1;
+//     }
+//     pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
+//
+//     struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
+//     ccnl_interest_append_pending(i, loopback_face);
+//     ccnl_interest_propagate(&theRelay, i);
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
      mmem_reinit(&mmem_header);
 #endif
 //    return len;
+    free_prefix(prefix);
 	return 0;
 }
 
@@ -550,10 +551,18 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 
     struct ccnl_content_s *c = 0;
     struct ccnl_pkt_s *pk = ccnl_ndntlv_bytes2pkt(typ, olddata, &data, &len);
+    /*by me copy bytes and chunknum from the former prefix*/
+    pk->pfx->bytes=prefix->bytes;
+    pk->pfx->chunknum=prefix->chunknum;
+
     c = ccnl_content_new(&theRelay, &pk);
+    c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
     ccnl_content_add2cache(&theRelay, c);
 //    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
-    c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
+    /*by me prefix and its comp and complen since they are no more needed for the contents*/
+    ccnl_free(prefix->complen);
+    ccnl_free(prefix->comp);
+    ccnl_free(prefix);
 
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
     mmem_reinit(&mmem_header);

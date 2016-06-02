@@ -630,7 +630,7 @@ ccnl_content_new(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s **pkt)
     DEBUGMSG_CORE(TRACE, "ccnl_content_new %p <%s [%d]>\n",
              (void*) *pkt, (s = ccnl_prefix_to_path((*pkt)->pfx)), ((*pkt)->pfx->chunknum)? *((*pkt)->pfx->chunknum) : -1);
 #ifndef CCNL_CONTIKI_MEMB_DEBUG
-    ccnl_free(s);
+    if(s != NULL) ccnl_free(s);
 #endif
 
 #ifdef CCNL_CONTIKI_MEMB_DEBUG
@@ -681,7 +681,7 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
                   ccnl->contentcnt, ccnl->max_cache_entries,
                   (void*)c, (s = ccnl_prefix_to_path(c->pkt->pfx)), (c->pkt->pfx->chunknum)? *(c->pkt->pfx->chunknum) : -1);
 #ifndef CCNL_CONTIKI_MEMB_DEBUG
-    ccnl_free(s);
+    if(s != NULL ) ccnl_free(s);
 #endif
     for (cit = ccnl->contents; cit; cit = cit->next) {
         if (c == cit) {
@@ -693,16 +693,23 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     if (ccnl_nfnprefix_contentIsNACK(c))
         return NULL;
 #endif
-    if (ccnl->max_cache_entries > 0 &&
-        ccnl->contentcnt >= ccnl->max_cache_entries) { // remove oldest content
+//    DBL_LINKED_LIST_ADD(ccnl->contents, c);//when there is only one ccnl_content
+//    ccnl->contentcnt++;
+    if (//ccnl->max_cache_entries > 0 &&
+        ccnl->contentcnt >= 3/*ccnl->max_cache_entries*/) { //by me only remain 3
         struct ccnl_content_s *c2;
-        int age = 0;
-        for (c2 = ccnl->contents; c2; c2 = c2->next)
-            if (!(c2->flags & CCNL_CONTENT_FLAGS_STATIC) &&
-                                        ((age == 0) || c2->last_used < age))
-                age = c2->last_used;
-        if (c2)
-            ccnl_content_remove(ccnl, c2);
+//        int age = 0;
+//        for (c2 = ccnl->contents; c2; c2 = c2->next)
+//            if (!(c2->flags & CCNL_CONTENT_FLAGS_STATIC) &&
+//                                        ((age == 0) || c2->last_used < age))
+//                age = c2->last_used;
+//        if (c2)
+//            ccnl_content_remove(ccnl, c2);
+    	for (c2 = ccnl->contents; c2->next; c2 = c2->next)
+    	{
+
+    	}
+    	ccnl_content_remove(ccnl, c2);//by me always remove the oldest one
     }
     DBL_LINKED_LIST_ADD(ccnl->contents, c);
     ccnl->contentcnt++;

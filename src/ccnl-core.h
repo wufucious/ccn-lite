@@ -68,7 +68,7 @@
 #define BYTE_ALIGNED
 #endif
 
-#define CCNL_BYTE_ALIGNED						/*TODO: this will increase text size and not reduce data and bss size, why?*/
+//#define CCNL_BYTE_ALIGNED						/*TODO: this will increase text size and not reduce data and bss size, why?*/
 // ----------------------------------------------------------------------
 
 typedef union {

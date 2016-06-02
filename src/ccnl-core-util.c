@@ -392,16 +392,16 @@ ccnl_prefix_new(int suite, int cnt)
 {
 	struct ccnl_prefix_s *p;
 
-//#ifdef CCNL_CONTIKI_MEMB_DEBUG
-//	memb_init(&prefix_memb);
-//	p=memb_alloc(&prefix_memb);
-//	if (!p)
-//		return NULL;
-//#else
+#ifdef CCNL_CONTIKI_MEMB_DEBUG
+	memb_init(&prefix_memb);
+	p=memb_alloc(&prefix_memb);
+	if (!p)
+		return NULL;
+#else
 	p = (struct ccnl_prefix_s *) ccnl_calloc(1, sizeof(struct ccnl_prefix_s));
     if (!p)
         return NULL;
-//#endif
+#endif
 
     /*TODO: suport various CNT*/
 //#ifdef CCNL_CONTIKI_MMEM_DEBUG
