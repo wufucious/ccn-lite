@@ -525,6 +525,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 //    int len = mkInterest(prefix, &nonce, buf, buf_len);
 //    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
     len = ccnl_ndntlv_prependContent(prefix, (unsigned char*)content, len, NULL, NULL, &offs, buf);
+    DEBUGMSG(DEBUG, "content has %d bytes\n", len);
     if(len==-1) return -1;
     *lens = len;
 
@@ -569,4 +570,97 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 #endif
 //    return len;
 	return offs;
+}
+
+int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *out_len)
+{
+//    struct ccnl_prefix_s *prefix;
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+    mmem_alloc(&mmem_header, 0);
+#endif
+
+    if (suite != CCNL_SUITE_NDNTLV) {
+        DEBUGMSG(WARNING, "Suite not supported by Contiki!\n");
+        return -1;
+    }
+
+    ccnl_mkInterestFunc mkInterest;
+    ccnl_isContentFunc isContent;
+
+    mkInterest = ccnl_suite2mkInterestFunc(suite);
+    isContent = ccnl_suite2isContentFunc(suite);
+
+    if (!mkInterest || !isContent) {
+        DEBUGMSG(WARNING, "No functions for this suite were found!\n");
+        return(-1);
+    }
+
+//    prefix = ccnl_URItoPrefix(name, suite, NULL, chunknum);
+//
+//    if (!prefix) {
+//        DEBUGMSG(ERROR, "prefix could not be created!\n");
+//        return -1;
+//    }
+//
+//    int nonce = rand();
+    /* TODO: support other transports than AF_PACKET */
+//     sockunion sun;
+//     sun.sa.sa_family = AF_PACKET;//TODO:which AF should I choose?
+//     memcpy(&(sun.linklayer.sll_addr), addr, addr_len);
+//     sun.linklayer.sll_halen = addr_len;
+//
+//     struct ccnl_face_s *fibface = ccnl_get_face_or_create(&theRelay, 0, &sun.sa, sizeof(sun.linklayer));
+//     fibface->flags |= CCNL_FACE_FLAGS_STATIC;
+//     ccnl_add_fib_entry(&theRelay, prefix, fibface);
+
+//    DEBUGMSG(DEBUG, "nonce: %i\n", nonce);
+
+//    int len = mkInterest(prefix, &nonce, buf, buf_len);
+    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
+//    *lens = len;
+
+    unsigned char *start = interest;
+    unsigned char *data = interest;
+    struct ccnl_pkt_s *pkt;
+
+    int typ;
+    int int_len;
+
+         /* TODO: support other suites */
+    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
+         DEBUGMSG(WARNING, "  invalid packet format\n");
+         return -1;
+     }
+    pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
+    pkt->s.ndntlv.minsuffix = 0;
+
+    // 	if(ccnl_ndntlv_cMatch(pkt, theRelay.contents)==-1)
+    //    	 DEBUGMSG(DEBUG, "can not find match content\n");
+
+    struct ccnl_content_s *c2;
+ 	for (c2 = theRelay.contents; c2; c2 = c2->next){
+ 		if(ccnl_ndntlv_cMatch(pkt, c2)==0){
+ 			int i = c2->pkt->buf->datalen;
+ 			DEBUGMSG(TRACE, "after compared all contents, "
+ 					"got match content finally and write it to output buffer\n");
+ 			memcpy(buf_out, c2->pkt->buf->data, i);
+ 			*out_len=i;
+ 			DEBUGMSG(TRACE, "output buffer size is %d\n", i);
+ 			break;
+ 		}
+ 	}
+
+    free_packet(pkt);
+
+#ifdef CCNL_CONTIKI_MMEM_DEBUG
+     mmem_reinit(&mmem_header);
+#endif
+
+     if(c2 == NULL) {
+  		DEBUGMSG(TRACE, "after compared all contents,"
+  		 			"can not find any match data in buffer\n");
+  		return -1;
+  	}
+	return 0;
 }
