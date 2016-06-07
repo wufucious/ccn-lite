@@ -171,6 +171,9 @@
 
 uint16_t ntohs(uint16_t val);
 uint32_t ntohl(uint32_t val);
+
+#define htons ntohs
+#define htonl ntohl
 /*---------------------------------------------------------------------------*/
 #define AF_PACKET 1
 #define AF_INET   2

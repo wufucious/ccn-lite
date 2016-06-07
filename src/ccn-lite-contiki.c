@@ -61,7 +61,7 @@
 // #define USE_DUP_CHECK
 // #define USE_IPV4
 // #define USE_IPV6
-// #define USE_SUITE_NDNTLV //move to ccnl-defs.h
+//#define USE_SUITE_NDNTLV //move to ccnl-defs.h
 #define NEEDS_PREFIX_MATCHING
 #define NEEDS_PACKET_CRAFTING
 
@@ -332,6 +332,66 @@ int ndntlv_isData(unsigned char *buf, int len)
 }
 #endif // USE_SUITE_NDNTLV
 
+
+// ----------------------------------------------------------------------
+
+#ifdef USE_SUITE_CCNTLV
+
+#ifdef NEEDS_PACKET_CRAFTING
+int
+ccntlv_mkInterest(struct ccnl_prefix_s *name, int *dummy,
+                  unsigned char *out, int outlen)
+{
+    (void) dummy;
+     int len, offset;
+
+     offset = outlen;
+     len = ccnl_ccntlv_prependChunkInterestWithHdr(name, &offset, out);
+     if (len > 0)
+         memmove(out, out + offset, len);
+
+     return len;
+}
+#endif
+
+struct ccnx_tlvhdr_ccnx2015_s*
+ccntlv_isHeader(unsigned char *buf, int len)
+{
+    struct ccnx_tlvhdr_ccnx2015_s *hp = (struct ccnx_tlvhdr_ccnx2015_s*)buf;
+
+    if ((unsigned int)len < sizeof(struct ccnx_tlvhdr_ccnx2015_s)) {
+        DEBUGMSG(ERROR, "ccntlv header not large enough\n");
+        return NULL;
+    }
+    if (hp->version != CCNX_TLV_V1) {
+        DEBUGMSG(ERROR, "ccntlv version %d not supported\n", hp->version);
+        return NULL;
+    }
+    if (ntohs(hp->pktlen) < len) {
+        DEBUGMSG(ERROR, "ccntlv packet too small (%d instead of %d bytes)\n",
+                 ntohs(hp->pktlen), len);
+        return NULL;
+    }
+    return hp;
+}
+
+int ccntlv_isData(unsigned char *buf, int len)
+{
+    struct ccnx_tlvhdr_ccnx2015_s *hp = ccntlv_isHeader(buf, len);
+
+    return hp && hp->pkttype == CCNX_PT_Data;
+}
+
+int ccntlv_isFragment(unsigned char *buf, int len)
+{
+    struct ccnx_tlvhdr_ccnx2015_s *hp = ccntlv_isHeader(buf, len);
+
+    return hp && hp->pkttype == CCNX_PT_Fragment;
+}
+
+#endif // USE_SUITE_CCNTLV
+
+// ----------------------------------------------------------------------
 ccnl_mkInterestFunc
 ccnl_suite2mkInterestFunc(int suite)
 {
@@ -406,7 +466,7 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
     mmem_alloc(&mmem_header, 0);
 #endif
 
-    if (suite != CCNL_SUITE_NDNTLV) {
+    if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!");
         return -1;
     }
@@ -486,7 +546,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
     mmem_alloc(&mmem_header, 0);
 #endif
 
-    if (suite != CCNL_SUITE_NDNTLV) {
+    if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!");
         return -1;
     }
@@ -524,7 +584,11 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 
 //    int len = mkInterest(prefix, &nonce, buf, buf_len);
 //    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
-    len = ccnl_ndntlv_prependContent(prefix, (unsigned char*)content, len, NULL, NULL, &offs, buf);
+    if(suite == CCNL_SUITE_NDNTLV) len = ccnl_ndntlv_prependContent(prefix,
+    		(unsigned char*)content, len, NULL, NULL, &offs, buf);
+    if(suite == CCNL_SUITE_CCNTLV) len = ccnl_ccntlv_prependContent(prefix,
+    		(unsigned char*)content, len, NULL, NULL, &offs, buf);
+
     DEBUGMSG(DEBUG, "content has %d bytes\n", len);
     if(len==-1) return -1;
     *lens = len;
@@ -545,26 +609,52 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 //    struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
 //    ccnl_interest_append_pending(i, loopback_face);
 //    ccnl_interest_propagate(&theRelay, i);
-    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) ||
-        typ != NDN_TLV_Data) {
-        return -1;
+    struct ccnl_content_s *c = 0;
+    struct ccnl_pkt_s *pk;
+
+    if(suite == CCNL_SUITE_NDNTLV){
+        if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) ||
+            typ != NDN_TLV_Data) {
+            return -1;
+        }
+
+        pk= ccnl_ndntlv_bytes2pkt(typ, olddata, &data, &len);
+        /*by me copy bytes and chunknum from the former prefix*/
+        pk->pfx->bytes=prefix->bytes;
+        pk->pfx->chunknum=prefix->chunknum;
+
+        c = ccnl_content_new(&theRelay, &pk);
+        c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
+        ccnl_content_add2cache(&theRelay, c);
+    //    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+        /*by me prefix and its comp and complen since they are no more needed for the contents*/
+        ccnl_free(prefix->complen);
+        ccnl_free(prefix->comp);
+        ccnl_free(prefix);
     }
 
-    struct ccnl_content_s *c = 0;
-    struct ccnl_pkt_s *pk = ccnl_ndntlv_bytes2pkt(typ, olddata, &data, &len);
-    /*by me copy bytes and chunknum from the former prefix*/
-    pk->pfx->bytes=prefix->bytes;
-    pk->pfx->chunknum=prefix->chunknum;
+    if(suite == CCNL_SUITE_CCNTLV){
+    	int hdrlen = ccnl_ccntlv_getHdrLen(data, len);
 
-    c = ccnl_content_new(&theRelay, &pk);
-    c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
-    ccnl_content_add2cache(&theRelay, c);
-//    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
-    /*by me prefix and its comp and complen since they are no more needed for the contents*/
-    ccnl_free(prefix->complen);
-    ccnl_free(prefix->comp);
-    ccnl_free(prefix);
+        if (hdrlen > 0) {
+            data += hdrlen;
+            len -= hdrlen;
+            pk= ccnl_ccntlv_bytes2pkt(olddata, &data, &len);
+        }
 
+        /*by me copy bytes and chunknum from the former prefix*/
+        pk->pfx->bytes=prefix->bytes;
+        pk->pfx->chunknum=prefix->chunknum;
+
+        c = ccnl_content_new(&theRelay, &pk);
+        c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
+        ccnl_content_add2cache(&theRelay, c);
+    //    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+        /*by me prefix and its comp and complen since they are no more needed for the contents*/
+        ccnl_free(prefix->complen);
+        ccnl_free(prefix->comp);
+        ccnl_free(prefix);
+    }
 #ifdef CCNL_CONTIKI_MMEM_DEBUG
     mmem_reinit(&mmem_header);
 #endif
