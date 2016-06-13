@@ -86,6 +86,7 @@ struct ccnl_if_s { // interface for packet IO
     EthernetUDP *sock;
 #elif defined(CCNL_RIOT)
     kernel_pid_t if_pid;
+    int sock;
 #else
     int sock;
 #endif
@@ -156,7 +157,7 @@ struct ccnl_prefix_s {
 #ifdef USE_NFN
     unsigned int nfnflags;
 # define CCNL_PREFIX_NFN   0x01
-# define CCNL_PREFIX_THUNK 0x02
+
 # define CCNL_PREFIX_COMPU 0x04
     unsigned char *nfnexpr;
 #endif

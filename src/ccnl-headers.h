@@ -30,6 +30,7 @@ int ccnl_face_enqueue(struct ccnl_relay_s *ccnl, struct ccnl_face_s *to, struct 
 struct ccnl_interest_s* ccnl_interest_new(struct ccnl_relay_s *ccnl, struct ccnl_face_s *from, struct ccnl_pkt_s **pkt);
 int ccnl_interest_append_pending(struct ccnl_interest_s *i, struct ccnl_face_s *from);
 void ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i);
+void ccnl_broadcast(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s *pkt);
 struct ccnl_interest_s *ccnl_interest_remove(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i);
 int ccnl_i_prefixof_c(struct ccnl_prefix_s *prefix, int minsuffix, int maxsuffix, struct ccnl_content_s *c);
 struct ccnl_content_s *ccnl_content_new(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s **pkt);
@@ -129,17 +130,15 @@ int ccnl_mgmt(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig, struct ccnl_pr
 /* ccnl-ext-nfn.c */
 #ifdef USE_NFN
 int ccnl_nfnprefix_isNFN(struct ccnl_prefix_s *p);
-int ccnl_nfnprefix_isTHUNK(struct ccnl_prefix_s *p);
 int ccnl_nfnprefix_contentIsNACK(struct ccnl_content_s *c);
 void ccnl_nfnprefix_set(struct ccnl_prefix_s *p, unsigned int flags);
 void ccnl_nfnprefix_clear(struct ccnl_prefix_s *p, unsigned int flags);
 int ccnl_nfnprefix_fillCallExpr(char *buf, struct fox_machine_state_s *s, int exclude_param);
-struct ccnl_prefix_s *ccnl_nfnprefix_mkCallPrefix(struct ccnl_prefix_s *name, int thunk_request, struct configuration_s *config, int parameter_num);
+struct ccnl_prefix_s *ccnl_nfnprefix_mkCallPrefix(struct ccnl_prefix_s *name, struct configuration_s *config, int parameter_num);
 struct ccnl_prefix_s *ccnl_nfnprefix_mkComputePrefix(struct configuration_s *config, int suite);
 struct ccnl_interest_s *ccnl_nfn_query2interest(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s **prefix, struct configuration_s *config);
 struct ccnl_content_s *ccnl_nfn_result2content(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s **prefix, unsigned char *resultstr, int resultlen);
-struct fox_machine_state_s *new_machine_state(int thunk_request, int num_of_required_thunks);
-struct configuration_s *new_config(struct ccnl_relay_s *ccnl, char *prog, struct environment_s *global_dict, int thunk_request, int start_locally, int num_of_required_thunks, struct ccnl_prefix_s *prefix, int configid, int suite);
+struct configuration_s *new_config(struct ccnl_relay_s *ccnl, char *prog, struct environment_s *global_dict, int start_locally, struct ccnl_prefix_s *prefix, int configid, int suite);
 void ccnl_nfn_freeEnvironment(struct environment_s *env);
 void ccnl_nfn_reserveEnvironment(struct environment_s *env);
 void ccnl_nfn_releaseEnvironment(struct environment_s **env);
@@ -152,12 +151,7 @@ int trim(char *str);
 void set_propagate_of_interests_to_1(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *pref);
 struct ccnl_prefix_s *create_prefix_for_content_on_result_stack(struct ccnl_relay_s *ccnl, struct configuration_s *config);
 struct ccnl_content_s *ccnl_nfn_local_content_search(struct ccnl_relay_s *ccnl, struct configuration_s *config, struct ccnl_prefix_s *prefix);
-char *ccnl_nfn_add_thunk(struct ccnl_relay_s *ccnl, struct configuration_s *config, struct ccnl_prefix_s *prefix);
-struct thunk_s *ccnl_nfn_get_thunk(struct ccnl_relay_s *ccnl, unsigned char *thunkid);
-struct ccnl_interest_s *ccnl_nfn_get_interest_for_thunk(struct ccnl_relay_s *ccnl, struct configuration_s *config, unsigned char *thunkid);
-void ccnl_nfn_remove_thunk(struct ccnl_relay_s *ccnl, char *thunkid);
-int ccnl_nfn_reply_thunk(struct ccnl_relay_s *ccnl, struct configuration_s *config);
-struct ccnl_content_s *ccnl_nfn_resolve_thunk(struct ccnl_relay_s *ccnl, struct configuration_s *config, unsigned char *thunk);
+
 struct ccnl_interest_s *ccnl_nfn_interest_remove(struct ccnl_relay_s *relay, struct ccnl_interest_s *i);
 void ZAM_register(char *name, BIF fct);
 struct closure_s *new_closure(char *term, struct environment_s *env);
@@ -168,16 +162,15 @@ void add_to_environment(struct environment_s **env, char *name, struct closure_s
 struct closure_s *search_in_environment(struct environment_s *env, char *name);
 int iscontentname(char *cp);
 int choose_parameter(struct configuration_s *config);
-struct ccnl_prefix_s *create_namecomps(struct ccnl_relay_s *ccnl, struct configuration_s *config, int parameter_number, int thunk_request, struct ccnl_prefix_s *prefix);
-char *ZAM_term(struct ccnl_relay_s *ccnl, struct configuration_s *config, int thunk_request, int *num_of_required_thunks, int *halt, char *dummybuf, int *restart);
+struct ccnl_prefix_s *create_namecomps(struct ccnl_relay_s *ccnl, struct configuration_s *config, int parameter_number, struct ccnl_prefix_s *prefix);
+char *ZAM_term(struct ccnl_relay_s *ccnl, struct configuration_s *config, int *halt, char *dummybuf, int *restart);
 void allocAndAdd(struct environment_s **env, char *name, char *cmd);
 void setup_global_environment(struct environment_s **env);
-struct ccnl_buf_s *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int thunk_request, int start_locally, int num_of_required_thunks, struct configuration_s **config, struct ccnl_prefix_s *prefix, int suite);
+struct ccnl_buf_s *Krivine_reduction(struct ccnl_relay_s *ccnl, char *expression, int start_locally, struct configuration_s **config, struct ccnl_prefix_s *prefix, int suite);
 void ZAM_init(void);
 struct configuration_s *ccnl_nfn_findConfig(struct configuration_s *config_list, int configid);
 void ccnl_nfn_continue_computation(struct ccnl_relay_s *ccnl, int configid, int continue_from_remove);
 void ccnl_nfn_nack_local_computation(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *orig, struct ccnl_prefix_s *prefix, struct ccnl_face_s *from, int suite);
-int ccnl_nfn_thunk_already_computing(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *prefix);
 int ccnl_nfn(struct ccnl_relay_s *ccnl, struct ccnl_prefix_s *prefix, struct ccnl_face_s *from, struct configuration_s *config, struct ccnl_interest_s *interest, int suite, int start_locally);
 int ccnl_nfn_RX_result(struct ccnl_relay_s *relay, struct ccnl_face_s *from, struct ccnl_content_s *c);
 #endif
@@ -232,8 +225,9 @@ int ccnl_lambdaStrToComponents(char **compVector, char *str);
 struct ccnl_buf_s *ccnl_mkSimpleInterest(struct ccnl_prefix_s *name, int *nonce);
 struct ccnl_buf_s *ccnl_mkSimpleContent(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, int *payoffset);
 int ccnl_str2suite(char *cp);
-int ccnl_add_fib_entry(struct ccnl_relay_s *relay, struct ccnl_prefix_s *pfx, struct ccnl_face_s *face);
-void ccnl_show_fib(struct ccnl_relay_s *relay);
+int ccnl_fib_add_entry(struct ccnl_relay_s *relay, struct ccnl_prefix_s *pfx, struct ccnl_face_s *face);
+int ccnl_fib_rem_entry(struct ccnl_relay_s *relay, struct ccnl_prefix_s *pfx, struct ccnl_face_s *face);
+void ccnl_fib_show(struct ccnl_relay_s *relay);
 
 //---------------------------------------------------------------------------------------------------------------------------------------
 /* fwd-ccnb.c */

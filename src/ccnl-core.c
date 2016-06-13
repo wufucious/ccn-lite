@@ -217,7 +217,9 @@ ccnl_interface_cleanup(struct ccnl_if_s *i)
         struct ccnl_txrequest_s *r = i->queue + (i->qfront+j)%CCNL_MAX_IF_QLEN;
         ccnl_free(r->buf);
     }
+#ifndef CCNL_RIOT
     ccnl_close_socket(i->sock);
+#endif
 }
 
 // ----------------------------------------------------------------------
@@ -449,7 +451,7 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
 {
     struct ccnl_forward_s *fwd;
     int rc = 0;
-#ifdef USE_NACK
+#if defined(USE_NACK) || defined(USE_RONR)
     int matching_face = 0;
 #endif
 
@@ -496,13 +498,19 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
                 (fwd->tap)(ccnl, i->from, i->pkt->pfx, i->pkt->buf);
             if (fwd->face)
                 ccnl_face_enqueue(ccnl, fwd->face, buf_dup(i->pkt->buf));
-#ifdef USE_NACK
+#if defined(USE_NACK) || defined(USE_RONR)
             matching_face = 1;
 #endif
         } else {
-            DEBUGMSG_CORE(DEBUG, "  not forwarded\n");
+            DEBUGMSG_CORE(DEBUG, "  no matching fib entry found\n");
         }
     }
+
+#ifdef USE_RONR
+    if (!matching_face) {
+        ccnl_broadcast(ccnl, i->pkt);
+    }
+#endif
 
 #ifdef USE_NACK
     if(!matching_face){
@@ -512,6 +520,57 @@ ccnl_interest_propagate(struct ccnl_relay_s *ccnl, struct ccnl_interest_s *i)
 #endif
 
     return;
+}
+
+void
+ccnl_broadcast(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s *pkt)
+{
+    sockunion sun;
+    struct ccnl_face_s *fibface = NULL;
+    for (unsigned i = 0; i < CCNL_MAX_INTERFACES; i++) {
+        switch (ccnl->ifs[i].addr.sa.sa_family) {
+#ifdef USE_LINKLAYER
+            case (AF_PACKET): {
+                /* initialize address with 0xFF for broadcast */
+                uint8_t relay_addr[CCNL_MAX_ADDRESS_LEN];
+                memset(relay_addr, CCNL_BROADCAST_OCTET, CCNL_MAX_ADDRESS_LEN);
+
+                sun.sa.sa_family = AF_PACKET;
+                memcpy(&(sun.linklayer.sll_addr), relay_addr, CCNL_MAX_ADDRESS_LEN);
+                sun.linklayer.sll_halen = CCNL_MAX_ADDRESS_LEN;
+                sun.linklayer.sll_protocol = htons(CCNL_ETH_TYPE);
+
+                fibface = ccnl_get_face_or_create(ccnl, i, &sun.sa, sizeof(sun.linklayer));
+                break;
+                              }
+#endif
+#ifdef USE_IPV4
+            case (AF_INET):
+                sun.sa.sa_family = AF_INET;
+                sun.ip4.sin_addr.s_addr = INADDR_BROADCAST;
+                extern int ccnl_suite2defaultPort(int suite);
+                sun.ip4.sin_port = htons(ccnl_suite2defaultPort(pkt->suite));
+
+                fibface = ccnl_get_face_or_create(ccnl, i, &sun.sa, sizeof(sun.ip4));
+                break;
+#endif
+#ifdef USE_IPV6
+            case (AF_INET6):
+                sun.sa.sa_family = AF_INET6;
+                sun.ip6.sin6_addr = in6addr_any;
+                extern int ccnl_suite2defaultPort(int suite);
+                sun.ip6.sin6_port = ccnl_suite2defaultPort(pkt->suite);
+
+                fibface = ccnl_get_face_or_create(ccnl, i, &sun.sa, sizeof(sun.ip6));
+                break;
+#endif
+        }
+        if (fibface) {
+            fibface->flags |= CCNL_FACE_FLAGS_STATIC;
+            ccnl_face_enqueue(ccnl, fibface, buf_dup(pkt->buf));
+            DEBUGMSG_CORE(DEBUG, "  broadcasting (%s)\n", ccnl_addr2ascii(&sun));
+        }
+    }
 }
 
 struct ccnl_interest_s*
@@ -649,17 +708,30 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 #endif
     if (ccnl->max_cache_entries > 0 &&
         ccnl->contentcnt >= ccnl->max_cache_entries) { // remove oldest content
-        struct ccnl_content_s *c2;
+        struct ccnl_content_s *c2, *oldest = NULL;
         int age = 0;
-        for (c2 = ccnl->contents; c2; c2 = c2->next)
-            if (!(c2->flags & CCNL_CONTENT_FLAGS_STATIC) &&
-                                        ((age == 0) || c2->last_used < age))
-                age = c2->last_used;
-        if (c2)
-            ccnl_content_remove(ccnl, c2);
+        for (c2 = ccnl->contents; c2; c2 = c2->next) {
+            if (!(c2->flags & CCNL_CONTENT_FLAGS_STATIC)) {
+                if ((age == 0) || c2->last_used < age) {
+                    age = c2->last_used;
+                    oldest = c2;
+                }
+            }
+        }
+        if (oldest) {
+            DEBUGMSG_CORE(DEBUG, " remove old entry from cache\n");
+            ccnl_content_remove(ccnl, oldest);
+        }
     }
-    DBL_LINKED_LIST_ADD(ccnl->contents, c);
-    ccnl->contentcnt++;
+    if ((ccnl->max_cache_entries < 0) ||
+        (ccnl->contentcnt < ccnl->max_cache_entries)) {
+        DBL_LINKED_LIST_ADD(ccnl->contents, c);
+        ccnl->contentcnt++;
+    }
+    else {
+        DEBUGMSG_CORE(WARNING, " cache is full, cannot add new entry\n");
+        return NULL;
+    }
     return c;
 }
 
@@ -795,7 +867,7 @@ ccnl_do_ageing(void *ptr, void *dummy)
     while (i) { // CONFORM: "Entries in the PIT MUST timeout rather
                 // than being held indefinitely."
         if ((i->last_used + CCNL_INTEREST_TIMEOUT) <= t ||
-                                i->retries > CCNL_MAX_INTEREST_RETRANSMIT) {
+                                i->retries >= CCNL_MAX_INTEREST_RETRANSMIT) {
             char *s = NULL;
             DEBUGMSG_CORE(TRACE, "AGING: INTEREST REMOVE %p\n", (void*) i);
             DEBUGMSG_CORE(DEBUG, " timeout: remove interest 0x%p <%s>\n",
