@@ -586,7 +586,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 //    DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
     if(suite == CCNL_SUITE_NDNTLV) len = ccnl_ndntlv_prependContent(prefix,
     		(unsigned char*)content, len, NULL, NULL, &offs, buf);
-    if(suite == CCNL_SUITE_CCNTLV) len = ccnl_ccntlv_prependContent(prefix,
+	if(suite == CCNL_SUITE_CCNTLV) len = ccnl_ccntlv_prependContentWithHdr(prefix,
     		(unsigned char*)content, len, NULL, NULL, &offs, buf);
 
     DEBUGMSG(DEBUG, "content has %d bytes\n", len);
@@ -670,7 +670,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
     mmem_alloc(&mmem_header, 0);
 #endif
 
-    if (suite != CCNL_SUITE_NDNTLV) {
+    if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!\n");
         return -1;
     }
@@ -717,29 +717,57 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
     int typ;
     int int_len;
 
-         /* TODO: support other suites */
-    if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
-         DEBUGMSG(WARNING, "  invalid packet format\n");
-         return -1;
-     }
-    pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
-    pkt->s.ndntlv.minsuffix = 0;
-
-    // 	if(ccnl_ndntlv_cMatch(pkt, theRelay.contents)==-1)
-    //    	 DEBUGMSG(DEBUG, "can not find match content\n");
-
     struct ccnl_content_s *c2;
- 	for (c2 = theRelay.contents; c2; c2 = c2->next){
- 		if(ccnl_ndntlv_cMatch(pkt, c2)==0){
- 			int i = c2->pkt->buf->datalen;
- 			DEBUGMSG(TRACE, "after compared all contents, "
- 					"got match content finally and write it to output buffer\n");
- 			memcpy(buf_out, c2->pkt->buf->data, i);
- 			*out_len=i;
- 			DEBUGMSG(TRACE, "output buffer size is %d\n", i);
- 			break;
- 		}
- 	}
+
+	if (suite == CCNL_SUITE_NDNTLV) {
+		if (ccnl_ndntlv_dehead(&data, &len, (int*) &typ, &int_len) || (int) int_len > len) {
+			 DEBUGMSG(WARNING, "  invalid packet format\n");
+			 return -1;
+		 }
+		pkt = ccnl_ndntlv_bytes2pkt(NDN_TLV_Interest, start, &data, &len);
+		pkt->s.ndntlv.minsuffix = 0;
+		pkt->s.ndntlv.ppkl= NULL;
+		// 	if(ccnl_ndntlv_cMatch(pkt, theRelay.contents)==-1)
+		//    	 DEBUGMSG(DEBUG, "can not find match content\n");
+
+		for (c2 = theRelay.contents; c2; c2 = c2->next){
+			if(ccnl_ndntlv_cMatch(pkt, c2)==0){
+				int i = c2->pkt->buf->datalen;
+				DEBUGMSG(TRACE, "after compared all contents, "
+						"got match content finally and write it to output buffer\n");
+				memcpy(buf_out, c2->pkt->buf->data, i);
+				*out_len=i;
+				DEBUGMSG(TRACE, "output buffer size is %d\n", i);
+				break;
+			}
+		}
+	}
+
+	if (suite == CCNL_SUITE_CCNTLV) {
+    	int hdrlen = ccnl_ccntlv_getHdrLen(data, len);
+
+        if (hdrlen > 0) {
+            data += hdrlen;
+            len -= hdrlen;
+            pkt= ccnl_ccntlv_bytes2pkt(start, &data, &len);
+        }
+//		pkt->s.ndntlv.minsuffix = 0;
+
+		// 	if(ccnl_ndntlv_cMatch(pkt, theRelay.contents)==-1)
+		//    	 DEBUGMSG(DEBUG, "can not find match content\n");
+
+		for (c2 = theRelay.contents; c2; c2 = c2->next){
+			if(ccnl_ccntlv_cMatch(pkt, c2)==0){
+				int i = c2->pkt->buf->datalen;
+				DEBUGMSG(TRACE, "after compared all contents, "
+						"got match content finally and write it to output buffer\n");
+				memcpy(buf_out, c2->pkt->buf->data, i);
+				*out_len=i;
+				DEBUGMSG(TRACE, "output buffer size is %d\n", i);
+				break;
+			}
+		}
+	}
 
     free_packet(pkt);
 
