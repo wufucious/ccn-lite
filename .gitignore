@@ -72,3 +72,5 @@ distribution/Debian/ccn-lite.deb
 distribution/RedHat/rpmbuild
 
 # eof
+/.cproject
+/.project
