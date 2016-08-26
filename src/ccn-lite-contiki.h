@@ -24,7 +24,7 @@
 
 #define DEBUGMSG(LVL, ...) do {       \
         if ((LVL)>debug_level) break;   \
-        fprintf(stderr, __VA_ARGS__);   \
+        printf(__VA_ARGS__);   \
     } while (0)
 # define DEBUGMSG_CORE(...) DEBUGMSG(__VA_ARGS__)
 # define DEBUGMSG_CFWD(...) DEBUGMSG(__VA_ARGS__)
