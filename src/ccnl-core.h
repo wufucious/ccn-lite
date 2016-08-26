@@ -50,6 +50,20 @@
 #define CCNL_LLADDR_STR_MAX_LEN    (3 * 6)
 #endif
 // ----------------------------------------------------------------------
+#define CCNL_CONTIKI //TODO:why refined
+
+#ifdef CCNL_CONTIKI
+  // #include "ccn-lite-contiki.h"
+  #define SOCKADDR_MAX_DATA_LEN   (26)
+  typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
+
+  struct sockaddr {
+      sa_family_t sa_family;                  /**< Address family */
+      char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
+  };
+
+#endif
+// ----------------------------------------------------------------------
 
 typedef union {
     struct sockaddr sa;

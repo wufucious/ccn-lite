@@ -385,10 +385,6 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 {
     struct ccnl_prefix_s *prefix;
 
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-    mmem_alloc(&mmem_header, 0);
-#endif
-
     if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!");
         return -1;
@@ -446,9 +442,6 @@ int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
 //     struct ccnl_interest_s *i = ccnl_interest_new(&theRelay, loopback_face, &pkt);
 //     ccnl_interest_append_pending(i, loopback_face);
 //     ccnl_interest_propagate(&theRelay, i);
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-     mmem_reinit(&mmem_header);
-#endif
 //    return len;
     free_prefix(prefix);
 	return 0;
@@ -464,10 +457,6 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 //    unsigned char _out[CCNL_MAX_PACKET_SIZE];
 
     struct ccnl_prefix_s *prefix;
-
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-    mmem_alloc(&mmem_header, 0);
-#endif
 
     if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!");
@@ -578,9 +567,6 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
         ccnl_free(prefix->comp);
         ccnl_free(prefix);
     }
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-    mmem_reinit(&mmem_header);
-#endif
 //    return len;
 	return offs;
 }
@@ -588,10 +574,6 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
 int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *out_len)
 {
 //    struct ccnl_prefix_s *prefix;
-
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-    mmem_alloc(&mmem_header, 0);
-#endif
 
     if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
         DEBUGMSG(WARNING, "Suite not supported by Contiki!\n");
@@ -694,11 +676,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 
     free_packet(pkt);
 
-#ifdef CCNL_CONTIKI_MMEM_DEBUG
-     mmem_reinit(&mmem_header);
-#endif
-
-     if(c2 == NULL) {
+    if(c2 == NULL) {
   		DEBUGMSG(TRACE, "after compared all contents,"
   		 			"can not find any match data in buffer\n");
   		return -1;

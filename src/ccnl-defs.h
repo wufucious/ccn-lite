@@ -36,7 +36,7 @@
 /* assuming that all broadcast addresses consist of a sequence of equal octets */
 #define CCNL_BROADCAST_OCTET            0xFF
 
-#if defined(CCNL_ARDUINO) || defined(CCNL_RIOT)
+#if defined(CCNL_ARDUINO) || defined(CCNL_RIOT) || defined(CCNL_CONTIKI)
 # define CCNL_MAX_INTERFACES             1
 # define CCNL_MAX_IF_QLEN                14
 # define CCNL_MAX_PACKET_SIZE            120
@@ -69,6 +69,8 @@
 #define CCNL_DEFAULT_MAX_CACHE_ENTRIES  0   // means: no content caching
 #define CCNL_MAX_NONCES                 256 // for detected dups
 
+#define USE_SUITE_NDNTLV    //TODO:here is a problem, #define USE_SUITE_NDNTLV other where not work， why?
+#define USE_SUITE_CCNTLV
 
 enum {
 #ifdef USE_SUITE_CCNB
