@@ -93,6 +93,7 @@
 #define AF_INET6  3
 #define AF_UNIX   4
 /*---------------------------------------------------------------------------*/
+int ccnl_init();
 int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
                       unsigned char *buf, size_t buf_len, int* len);
 

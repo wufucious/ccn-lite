@@ -377,7 +377,12 @@ ccnl_suite2isContentFunc(int suite)
     return NULL;
 }
 /*-------------------------------------------------------*/
+int ccnl_init()
+{
+    (&theRelay)->max_cache_entries = 6;
 
+}
+/*-------------------------------------------------------*/
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
                                unsigned char *buf, size_t buf_len, int *lens)
@@ -536,7 +541,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
         pk->pfx->chunknum=prefix->chunknum;
 
         c = ccnl_content_new(&theRelay, &pk);
-        c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
+        c->flags = CCNL_CONTENT_FLAGS_STALE;//content can be removed
         ccnl_content_add2cache(&theRelay, c);
     //    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
         /*by me prefix and its comp and complen since they are no more needed for the contents*/
@@ -559,7 +564,7 @@ int ccnl_make_content(int suite, char *name, char *content,/*uint8_t *addr,
         pk->pfx->chunknum=prefix->chunknum;
 
         c = ccnl_content_new(&theRelay, &pk);
-        c->flags |= CCNL_CONTENT_FLAGS_STALE;//content can be removed
+        c->flags = CCNL_CONTENT_FLAGS_STALE;//content can be removed
         ccnl_content_add2cache(&theRelay, c);
     //    c->flags |= CCNL_CONTENT_FLAGS_STATIC;
         /*by me prefix and its comp and complen since they are no more needed for the contents*/
