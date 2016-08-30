@@ -41,11 +41,17 @@
 
 #define CONSTSTR(s)                     s
 
-//#include "stdlibc/malloc.h"
-#define ccnl_malloc(s)                  malloc(s)
-#define ccnl_calloc(n,s)                malloc(n*s)
-#define ccnl_realloc(p,s)               realloc(p,s)
-#define ccnl_free(p)                    free(p)
+/*-----------------------------------------------*/
+//#define ccnl_malloc(s)                  malloc(s)
+//#define ccnl_calloc(n,s)                malloc(n*s)
+//#define ccnl_realloc(p,s)               realloc(p,s)
+//#define ccnl_free(p)                    free(p)
+/*-----------------------------------------------*/
+#include <heapmem.h>
+#define ccnl_malloc(s)                  heapmem_alloc(s)
+#define ccnl_calloc(n,s)                heapmem_alloc(n*s)
+#define ccnl_free(p)                    heapmem_free(p)
+/*-----------------------------------------------*/
 
 #define free_2ptr_list(a,b)     ccnl_free(a), ccnl_free(b)
 #define free_3ptr_list(a,b,c)   ccnl_free(a), ccnl_free(b), ccnl_free(c)
