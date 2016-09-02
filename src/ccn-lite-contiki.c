@@ -379,7 +379,7 @@ ccnl_suite2isContentFunc(int suite)
 /*-------------------------------------------------------*/
 int ccnl_init()
 {
-    (&theRelay)->max_cache_entries = 6;
+    (&theRelay)->max_cache_entries = CCNL_MAX_CACHE_ENTRIES;
 
 }
 /*-------------------------------------------------------*/
