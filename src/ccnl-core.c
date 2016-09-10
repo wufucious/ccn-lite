@@ -681,6 +681,7 @@ ccnl_content_remove(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 
 //    free_content(c);
     if (c->pkt) {
+    	ccnl_free(c->pkt->content);
         free_prefix(c->pkt->pfx);
         ccnl_free(c->pkt->buf);
         ccnl_free(c->pkt);
