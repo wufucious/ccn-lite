@@ -642,12 +642,31 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 
 		for (c2 = theRelay.contents; c2; c2 = c2->next){
 			if(ccnl_ndntlv_cMatch(pkt, c2)==0){
-				int i = c2->pkt->buf->datalen;
 				DEBUGMSG(TRACE, "after compared all contents, "
-						"got match content finally and write it to output buffer\n");
-				memcpy(buf_out, c2->pkt->buf->data, i);
+						"got match content finally, going to write it to output buffer\n");
+
+				//if buf empty, online generate ccn data and cache it or abort
+				struct ccnl_buf_s *b2 = c2->pkt->buf;
+				if(!b2){
+					b2 = ccnl_mkSimpleContent(c2->pkt->pfx,
+							c2->pkt->content, strlen(c2->pkt->content), 0);
+					if(!b2){
+						DEBUGMSG(ERROR, "content buffer could not be created!\n");
+						return -1;
+					}
+				}
+
+				int i = b2->datalen;
+				memcpy(buf_out, b2->data, i);
 				*out_len=i;
-				DEBUGMSG(TRACE, "output buffer size is %d\n", i);
+				DEBUGMSG(TRACE, "output content size is %d\n", i);
+#if 1
+				ccnl_free(b2);		//abort content
+				DEBUGMSG(TRACE, "Abort the new generated data\n");
+#else
+				c2->pkt->buf = b2;//cache content
+				DEBUGMSG(TRACE, "Cache the new generated data\n");
+#endif
 				break;
 			}
 		}
@@ -687,4 +706,53 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
   		return -1;
   	}
 	return 0;
+}
+
+int ccnl_cache_content(int suite, char *name, char *content)
+{
+    int len = strlen(content);
+//    int offs = CCNL_MAX_PACKET_SIZE;
+
+    struct ccnl_prefix_s *prefix;
+
+    if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
+        DEBUGMSG(WARNING, "Suite not supported by Contiki!");
+        return -1;
+    }
+
+    prefix = ccnl_URItoPrefix(name, suite, NULL, NULL);
+
+    if (!prefix) {
+        DEBUGMSG(ERROR, "prefix could not be created!\n");
+        return -1;
+    }
+
+    struct ccnl_content_s *c =0;
+    struct ccnl_pkt_s *pk;
+
+    pk = (struct ccnl_pkt_s*) ccnl_calloc(1, sizeof(*pk));
+    if(!pk){
+    	DEBUGMSG(ERROR, "pkg could not be created!\n");
+    	free_prefix(prefix);
+       	return -1;
+    }
+
+    pk->suite = suite;
+    pk->pfx = prefix;
+    pk->content = (unsigned char *)ccnl_malloc(len+1);
+
+    if(!pk->content){
+    	DEBUGMSG(ERROR, "content could not be created!\n");
+    	free_prefix(prefix);
+    	free_packet(pk);
+    	return -1;
+    }
+
+    memcpy(pk->content, content, len+1);
+
+    c = ccnl_content_new(&theRelay, &pk);
+    c->flags = CCNL_CONTENT_FLAGS_STALE;//content can be removed
+    c->pkt->buf = NULL;//data empty buffer, generate ccn data when needed
+    ccnl_content_add2cache(&theRelay, c);
+
 }

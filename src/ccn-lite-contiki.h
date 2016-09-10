@@ -108,7 +108,7 @@ int ccnl_make_content(int suite, char *name, char *content, unsigned int *chunkn
 
 int ccnl_find_content(int suite, char *interest, int len,char *buf, int *lens);
 
-
+int ccnl_cache_content(int suite, char *name, char *content);
 // void *ccnl_malloc(size_t size); // Allocate uninitialized memory.
 // void *ccnl_calloc(size_t number, size_t size); // Allocate zero-initialized memory.
 // void *ccnl_realloc(void *ptr, size_t size); // Change the size of an allocated object.
