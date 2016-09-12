@@ -205,7 +205,7 @@ ccnl_buf_new(void *data, int len)
 
 // ----------------------------------------------------------------------
 
-int debug_level =VERBOSE;//VERBOSE;												//riot redefined in ccnl-common.c
+int debug_level =FATAL;//VERBOSE;												//riot redefined in ccnl-common.c
 struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 struct ccnl_face_s *loopback_face;      //riot add
 
