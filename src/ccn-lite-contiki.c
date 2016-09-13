@@ -660,7 +660,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 				memcpy(buf_out, b2->data, i);
 				*out_len=i;
 				DEBUGMSG(TRACE, "output content size is %d\n", i);
-#if 1
+#ifndef CONTENT_CACHE
 				ccnl_free(b2);		//abort content
 				DEBUGMSG(TRACE, "Abort the new generated data\n");
 #else
