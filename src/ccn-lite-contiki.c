@@ -29,19 +29,122 @@
 #include <string.h>//riot
 #include <time.h>//riot
 #include <unistd.h>//riot
-
-
-#include <sys/time.h>//where contains timeval and gettimeofday
-
+//#include <sys/time.h>//where contains timeval and gettimeofday
 #include <stdint.h> //add by me //uint32_t uint8_t......
-
+#include <limits.h> //INT_MAX...
 
 #include "ccn-lite-contiki.h"
 
-#include "ccnl-os-time.c"
 #include "ccnl-headers.h"
+/*-------------------------------------------------------------------*/
+//#include "ccnl-os-time.c"
+#define CCNL_NOW()                    current_time()
 
-// ----------------------------------------------------------------------
+/*in ccn-lite code, last_used is int but used as unsignedess int,
+use % to avoid overflow and limit i between 0 to INT_MAX
+it also works when sizeof(unsigned long)>sizeof(int) */
+int
+current_time(void)
+{
+	unsigned long i = clock_time();//get the current time from Contiki
+	int j;
+
+	if (i > INT_MAX) j = i % ((unsigned long)INT_MAX+1);
+	else j = i;
+
+	return j;
+}
+
+//char*
+//timestamp(void)
+//{
+//    static char ts[16], *cp;
+//
+//    sprintf(ts, "%.4g", CCNL_NOW());
+//    cp = strchr(ts, '.');
+//    if (!cp)
+//        strcat(ts, ".0000");
+//    else if (strlen(cp) > 5)
+//        cp[5] = '\0';
+//    else while (strlen(cp) < 5)
+//        strcat(cp, "0");
+//
+//    return ts;
+//}
+
+//struct ccnl_timer_s {
+//    struct ccnl_timer_s *next;
+//    struct timeval timeout;
+//    void (*fct)(char,int);
+//    void (*fct2)(void*,void*);
+//    char node;
+//    int intarg;
+//    void *aux1;
+//    void *aux2;
+//  //    int handler;
+//};
+//
+//struct ccnl_timer_s *eventqueue;
+
+//void
+//ccnl_get_timeval(struct timeval *tv)
+//{
+//    gettimeofday(tv, NULL);
+//}
+
+//long
+//timevaldelta(struct timeval *a, struct timeval *b) {
+//    return 1000000*(a->tv_sec - b->tv_sec) + a->tv_usec - b->tv_usec;
+//}
+//
+//void*
+//ccnl_set_timer(uint64_t usec, void (*fct)(void *aux1, void *aux2),
+//                 void *aux1, void *aux2)
+//{
+//    struct ccnl_timer_s *t, **pp;
+//    //    static int handlercnt;
+//
+//    t = (struct ccnl_timer_s *) ccnl_calloc(1, sizeof(*t));
+//    if (!t)
+//        return 0;
+//    t->fct2 = fct;
+//    gettimeofday(&t->timeout, NULL);
+//    usec += t->timeout.tv_usec;
+//    t->timeout.tv_sec += usec / 1000000;
+//    t->timeout.tv_usec = usec % 1000000;
+//    t->aux1 = aux1;
+//    t->aux2 = aux2;
+//
+//    for (pp = &eventqueue; ; pp = &((*pp)->next)) {
+//    if (!*pp || (*pp)->timeout.tv_sec > t->timeout.tv_sec ||
+//        ((*pp)->timeout.tv_sec == t->timeout.tv_sec &&
+//         (*pp)->timeout.tv_usec > t->timeout.tv_usec)) {
+//        t->next = *pp;
+//        //        t->handler = handlercnt++;
+//        *pp = t;
+//        return t;
+//    }
+//    }
+//    return NULL; // ?
+//}
+//
+//void
+//ccnl_rem_timer(void *h)
+//{
+//    struct ccnl_timer_s **pp;
+//
+//    for (pp = &eventqueue; *pp; pp = &((*pp)->next)) {
+//        if ((void*)*pp == h) {
+//            struct ccnl_timer_s *e = *pp;
+//            *pp = e->next;
+//            ccnl_free(e);
+//            break;
+//        }
+//    }
+//}
+
+/*-------------------------------------------------------------------*/
+
 
 #undef USE_NFN
 
@@ -84,8 +187,6 @@ ccnl_buf_new(void *data, int len)
         memcpy(b->data, data, len);
     return b;
 }
-
-
 // ----------------------------------------------------------------------
 // timer support and event server
 // copied from ccnl-os-time.c
@@ -649,7 +750,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 				struct ccnl_buf_s *b2 = c2->pkt->buf;
 				if(!b2){
 					b2 = ccnl_mkSimpleContent(c2->pkt->pfx,
-							c2->pkt->content, strlen(c2->pkt->content), 0);
+							c2->pkt->content, strlen((char*)c2->pkt->content), 0);
 					if(!b2){
 						DEBUGMSG(ERROR, "content buffer could not be created!\n");
 						return -1;

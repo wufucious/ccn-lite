@@ -178,7 +178,7 @@ int ccnl_nfn_RX_result(struct ccnl_relay_s *relay, struct ccnl_face_s *from, str
 //---------------------------------------------------------------------------------------------------------------------------------------
 /* ccnl-platform.c */
 long timevaldelta(struct timeval *a, struct timeval *b);
-#ifdef CCNL_LINUXKERNEL
+#if defined(CCNL_LINUXKERNEL) || defined(CCNL_CONTIKI)
 int current_time(void);
 #else
 double current_time(void);
