@@ -50,7 +50,7 @@
 #define CCNL_LLADDR_STR_MAX_LEN    (3 * 6)
 #endif
 // ----------------------------------------------------------------------
-#define CCNL_CONTIKI //TODO:why refined
+//#define CCNL_CONTIKI //TODO:why refined
 
 #ifdef CCNL_CONTIKI
   // #include "ccn-lite-contiki.h"

@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <stdint.h>
 
+#define CCNL_CONTIKI
+//
 #include "ccnl-defs.h"
 #include "ccnl-core.h"
 #include "ccnl-headers.h"
