@@ -380,7 +380,7 @@ ccnl_suite2isContentFunc(int suite)
 int ccnl_init()
 {
     (&theRelay)->max_cache_entries = CCNL_MAX_CACHE_ENTRIES;
-
+    return 0;
 }
 /*-------------------------------------------------------*/
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
@@ -620,8 +620,8 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
     DEBUGMSG(DEBUG, "interest has %d bytes\n", len);
 //    *lens = len;
 
-    unsigned char *start = interest;
-    unsigned char *data = interest;
+    unsigned char *start = (unsigned char *) interest;
+    unsigned char *data = (unsigned char *) interest;
     struct ccnl_pkt_s *pkt;
 
     int typ;
@@ -755,4 +755,5 @@ int ccnl_cache_content(int suite, char *name, char *content)
     c->pkt->buf = NULL;//data empty buffer, generate ccn data when needed
     ccnl_content_add2cache(&theRelay, c);
 
+    return 0;
 }
