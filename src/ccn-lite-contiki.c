@@ -750,7 +750,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 				struct ccnl_buf_s *b2 = c2->pkt->buf;
 				if(!b2){
 					b2 = ccnl_mkSimpleContent(c2->pkt->pfx,
-							c2->pkt->content, strlen((char*)c2->pkt->content), 0);
+							c2->pkt->content, c2->pkt->contlen, 0);
 					if(!b2){
 						DEBUGMSG(ERROR, "content buffer could not be created!\n");
 						return -1;
@@ -809,11 +809,8 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 	return 0;
 }
 
-int ccnl_cache_content(int suite, char *name, char *content)
+int ccnl_cache_content(int suite, char *name, char *content, int len)
 {
-    int len = strlen(content);
-//    int offs = CCNL_MAX_PACKET_SIZE;
-
     struct ccnl_prefix_s *prefix;
 
     if (suite != CCNL_SUITE_NDNTLV && suite != CCNL_SUITE_CCNTLV) {
@@ -840,7 +837,8 @@ int ccnl_cache_content(int suite, char *name, char *content)
 
     pk->suite = suite;
     pk->pfx = prefix;
-    pk->content = (unsigned char *)ccnl_malloc(len+1);
+    pk->content = (unsigned char *)ccnl_malloc(len);
+    pk->contlen = len;
 
     if(!pk->content){
     	DEBUGMSG(ERROR, "content could not be created!\n");
@@ -849,7 +847,7 @@ int ccnl_cache_content(int suite, char *name, char *content)
     	return -1;
     }
 
-    memcpy(pk->content, content, len+1);
+    memcpy(pk->content, content, len);
 
     c = ccnl_content_new(&theRelay, &pk);
     c->flags = CCNL_CONTENT_FLAGS_STALE;//content can be removed
