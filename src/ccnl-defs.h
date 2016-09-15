@@ -69,9 +69,6 @@
 #define CCNL_DEFAULT_MAX_CACHE_ENTRIES  0   // means: no content caching
 #define CCNL_MAX_NONCES                 256 // for detected dups
 
-#define USE_SUITE_NDNTLV    //TODO:here is a problem, #define USE_SUITE_NDNTLV other where not work， why?
-#define USE_SUITE_CCNTLV
-
 enum {
 #ifdef USE_SUITE_CCNB
   CCNL_SUITE_CCNB = 1,

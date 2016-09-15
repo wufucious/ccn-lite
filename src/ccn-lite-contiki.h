@@ -11,7 +11,17 @@
 #include <stdint.h>
 
 #define CCNL_CONTIKI
-//
+
+#define USE_SUITE_NDNTLV
+#define USE_SUITE_CCNTLV
+
+#define SOCKADDR_MAX_DATA_LEN   (26)
+typedef unsigned short sa_family_t;   /**< address family type */ //copy from RIOT socket.h
+struct sockaddr {
+	sa_family_t sa_family;                  /**< Address family */
+	char sa_data[SOCKADDR_MAX_DATA_LEN];    /**< Socket address (variable length data) */
+};
+
 #include "ccnl-defs.h"
 #include "ccnl-core.h"
 #include "ccnl-headers.h"
@@ -83,13 +93,8 @@
 #define cache_strategy_remove(...)      0
 
 /*-----------------------------------------------*/
-//copy from uip.h in Contiki. implemnt the ntohs and ntohl functions
-//#define HTONS(n) (uint16_t)((((uint16_t) (n)) << 8) | (((uint16_t) (n)) >> 8))
-//#define HTONL(n) (((uint32_t)HTONS(n) << 16) | HTONS((uint32_t)(n) >> 16))
-//
-//uint16_t ntohs(uint16_t val);
-//uint32_t ntohl(uint32_t val);
 #include "net/ip/uip.h"
+
 #define ntohs uip_ntohs
 #define ntohl uip_ntohl
 

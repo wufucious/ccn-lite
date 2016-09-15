@@ -35,9 +35,45 @@
 
 #include "ccn-lite-contiki.h"
 
-#include "ccnl-headers.h"
+// #define USE_DUP_CHECK
+#define USE_SUITE_NDNTLV //move to ccnl-defs.h
+#define NEEDS_PREFIX_MATCHING
+#define NEEDS_PACKET_CRAFTING
+
+#define INTEREST_PENDING
+//#define CONTENT_CACHE
 /*-------------------------------------------------------------------*/
-//#include "ccnl-os-time.c"
+void free_packet(struct ccnl_pkt_s *pkt);
+
+struct ccnl_interest_s* ccnl_interest_remove(struct ccnl_relay_s *ccnl,
+                     struct ccnl_interest_s *i);
+int ccnl_pkt2suite(unsigned char *data, int len, int *skip);
+
+char* ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr,
+                    int ccntlv_skip, int escape_components, int call_slash);
+#define ccnl_prefix_to_path(P) ccnl_prefix_to_path_detailed(P, 1, 0, 0)
+
+char* ccnl_addr2ascii(sockunion *su);
+void ccnl_core_addToCleanup(struct ccnl_buf_s *buf);
+const char* ccnl_suite2str(int suite);
+bool ccnl_isSuite(int suite);
+/*-------------------------------------------------------------------*/
+struct ccnl_buf_s*
+ccnl_buf_new(void *data, int len)
+{
+    struct ccnl_buf_s *b = ccnl_malloc(sizeof(*b) + len);
+
+    if (!b)
+        return NULL;
+    b->next = NULL;
+    b->datalen = len;
+    if (data)
+        memcpy(b->data, data, len);
+    return b;
+}
+
+/*-------------------------------------------------------------------*/
+//#include "ccnl-os-time.c"//Contiki time different from others, implement here
 #define CCNL_NOW()                    current_time()
 
 /*in ccn-lite code, last_used is int but used as unsignedess int,
@@ -144,190 +180,14 @@ current_time(void)
 //}
 
 /*-------------------------------------------------------------------*/
-
-
-#undef USE_NFN
-
-// #define USE_DUP_CHECK
-// #define USE_IPV4
-// #define USE_IPV6
-#define USE_SUITE_NDNTLV //move to ccnl-defs.h
-#define NEEDS_PREFIX_MATCHING
-#define NEEDS_PACKET_CRAFTING
-
-#include "ccnl-defs.h"
-#include "ccnl-core.h"
-
-void free_packet(struct ccnl_pkt_s *pkt);
-
-struct ccnl_interest_s* ccnl_interest_remove(struct ccnl_relay_s *ccnl,
-                     struct ccnl_interest_s *i);
-int ccnl_pkt2suite(unsigned char *data, int len, int *skip);
-
-char* ccnl_prefix_to_path_detailed(struct ccnl_prefix_s *pr,
-                    int ccntlv_skip, int escape_components, int call_slash);
-#define ccnl_prefix_to_path(P) ccnl_prefix_to_path_detailed(P, 1, 0, 0)
-
-char* ccnl_addr2ascii(sockunion *su);
-void ccnl_core_addToCleanup(struct ccnl_buf_s *buf);
-const char* ccnl_suite2str(int suite);
-bool ccnl_isSuite(int suite);
-//riot
-//----------------------------------------------------------------------
-struct ccnl_buf_s*																		//riot
-ccnl_buf_new(void *data, int len)
-{
-    struct ccnl_buf_s *b = ccnl_malloc(sizeof(*b) + len);
-
-    if (!b)
-        return NULL;
-    b->next = NULL;
-    b->datalen = len;
-    if (data)
-        memcpy(b->data, data, len);
-    return b;
-}
-// ----------------------------------------------------------------------
-// timer support and event server
-// copied from ccnl-os-time.c
-// (because we do not want to have includes beyond the core CCN logic)
-
-// void
-// ccnl_get_timeval(struct timeval *tv)						//riot moved to ccnl-os-time.c,
-// {
-//     gettimeofday(tv, NULL);
-// }
-
-// long
-// timevaldelta(struct timeval *a, struct timeval *b) {		//riot moved to ccnl-os-time.c, $timeval defined in <bits/time.h>, need redefined
-//     return 1000000*(a->tv_sec - b->tv_sec) + a->tv_usec - b->tv_usec;
-// }
-
-// struct ccnl_timer_s {										//riot moved to ccnl-os-time.c,
-//     struct ccnl_timer_s *next;
-//     struct timeval timeout;
-//     void (*fct)(char,int);
-//     void (*fct2)(void*,void*);
-//     char node;
-//     int intarg;
-//     void *aux1;
-//     void *aux2;
-//     int handler;
-// };
-
-// struct ccnl_timer_s *eventqueue;							//riot moved to ccnl-os-time.c,
-
-// void*
-// ccnl_set_timer(int usec, void (*fct)(void *aux1, void *aux2),//riot moved to ccnl-os-time.c,
-//                  void *aux1, void *aux2)
-// {
-//     struct ccnl_timer_s *t, **pp;
-//     static int handlercnt;
-//
-//     t = (struct ccnl_timer_s *) ccnl_calloc(1, sizeof(*t));
-//     if (!t)
-//         return 0;
-//     t->fct2 = fct;
-//     gettimeofday(&t->timeout, NULL);
-//     usec += t->timeout.tv_usec;
-//     t->timeout.tv_sec += usec / 1000000;
-//     t->timeout.tv_usec = usec % 1000000;
-//     t->aux1 = aux1;
-//     t->aux2 = aux2;
-//
-//     for (pp = &eventqueue; ; pp = &((*pp)->next)) {
-//         if (!*pp || (*pp)->timeout.tv_sec > t->timeout.tv_sec ||
-//             ((*pp)->timeout.tv_sec == t->timeout.tv_sec &&
-//              (*pp)->timeout.tv_usec > t->timeout.tv_usec)) {
-//             t->next = *pp;
-//             t->handler = handlercnt++;
-//             *pp = t;
-//             return t;
-//         }
-//     }
-//     return NULL; // ?
-// }
-
-// void
-// ccnl_rem_timer(void *h)                                    //riot moved to ccnl-os-time.c,
-// {
-//     struct ccnl_timer_s **pp;
-//
-//     for (pp = &eventqueue; *pp; pp = &((*pp)->next)) {
-//         if ((void*)*pp == h) {
-//             struct ccnl_timer_s *e = *pp;
-//             *pp = e->next;
-//             ccnl_free(e);
-//             break;
-//         }
-//     }
-// }
-
-// double
-// CCNL_NOW()													//riot moved to ccnl-os-time.c,
-// {
-//     struct timeval tv;
-//     static time_t start;
-//     static time_t start_usec;
-//
-//     ccnl_get_timeval(&tv);
-//
-//     if (!start) {
-//         start = tv.tv_sec;
-//         start_usec = tv.tv_usec;
-//     }
-//
-//     return (double)(tv.tv_sec) - start +
-//                 ((double)(tv.tv_usec) - start_usec) / 1000000;
-// }
-
-// struct timeval*
-// ccnl_run_events()												//changed to the "int ccnl_run_events()" in ccnl-os-time.c
-// {
-//     static struct timeval now;
-//     long usec;
-//
-//     gettimeofday(&now, 0);
-//     while (eventqueue) {
-//         struct ccnl_timer_s *t = eventqueue;
-//         usec = timevaldelta(&(t->timeout), &now);
-//         if (usec >= 0) {
-//             now.tv_sec = usec / 1000000;
-//             now.tv_usec = usec % 1000000;
-//             return &now;
-//         }
-//         else if (t->fct2)
-//             (t->fct2)(t->aux1, t->aux2);
-//         eventqueue = t->next;
-//         ccnl_free(t);
-//     }
-//     return NULL;
-// }
-
-// ----------------------------------------------------------------------
-
 int debug_level =VERBOSE;//VERBOSE;												//riot redefined in ccnl-common.c
 struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
 struct ccnl_face_s *loopback_face;      //riot add
 
 #include "ccnl-core.c"
-
-/*-------------------------------------------------------*/
-//uint16_t ntohs(uint16_t val)
-//{
-//  return HTONS(val);
-//}
-//
-//uint32_t ntohl(uint32_t val)
-//{
-//  return HTONL(val);
-//}
-
-/*-------------------------------------------------------*/
-typedef int (*ccnl_mkInterestFunc)(struct ccnl_prefix_s*, int*, unsigned char*, int);
-typedef int (*ccnl_isContentFunc)(unsigned char*, int);
-
+/*-------------------------------------------------------------------*/
 #ifdef USE_SUITE_NDNTLV
+
 #ifdef NEEDS_PACKET_CRAFTING
 int ndntlv_mkInterest(struct ccnl_prefix_s *name, int *nonce,
                   unsigned char *out, int outlen)
@@ -357,8 +217,7 @@ int ndntlv_isData(unsigned char *buf, int len)
 #endif // USE_SUITE_NDNTLV
 
 
-// ----------------------------------------------------------------------
-
+/*-------------------------------------------------------------------*/
 #ifdef USE_SUITE_CCNTLV
 
 #ifdef NEEDS_PACKET_CRAFTING
@@ -415,7 +274,10 @@ int ccntlv_isFragment(unsigned char *buf, int len)
 
 #endif // USE_SUITE_CCNTLV
 
-// ----------------------------------------------------------------------
+/*-------------------------------------------------------------------*/
+typedef int (*ccnl_mkInterestFunc)(struct ccnl_prefix_s*, int*, unsigned char*, int);
+typedef int (*ccnl_isContentFunc)(unsigned char*, int);
+
 ccnl_mkInterestFunc
 ccnl_suite2mkInterestFunc(int suite)
 {
@@ -483,7 +345,7 @@ int ccnl_init()
     (&theRelay)->max_cache_entries = CCNL_MAX_CACHE_ENTRIES;
     return 0;
 }
-/*-------------------------------------------------------*/
+
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
                                unsigned char *buf, size_t buf_len, int *lens)
@@ -804,6 +666,9 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
     if(c2 == NULL) {
   		DEBUGMSG(TRACE, "after compared all contents,"
   		 			"can not find any match data in buffer\n");
+#ifdef INTEREST_PENDING
+
+#endif
   		return -1;
   	}
 	return 0;
