@@ -395,6 +395,24 @@ my_ccnl_do_ageing()
     return;
 }
 
+int ccnl_cache_search(struct ccnl_pkt_s *pkt)
+{
+	struct ccnl_interest_s *i;
+
+	for(i = theRelay.pit; i; i = i->next){
+	    if (i->pkt->pfx->suite == pkt->suite &&
+	    		!ccnl_prefix_cmp(i->pkt->pfx, NULL, pkt->pfx, CMP_EXACT)){
+			DEBUGMSG(TRACE, "found pending interest which match this content "
+	  				"object, going to remove that interest from pit\n");
+	  		ccnl_interest_remove(&theRelay, i);
+			return 1;
+		}
+	}
+	DEBUGMSG(TRACE, "after search the cache, can not "
+			"found pending interest which match this content \n");
+	return 0;
+}
+
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
                                unsigned char *buf, size_t buf_len, int *lens)
@@ -751,7 +769,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 	return 0;
 }
 
-int ccnl_cache_content(int suite, char *name, char *content, int len)
+int ccnl_cache_content(int suite, char *name, char *content, int len, unsigned char *buf_out, int *out_len)
 {
     struct ccnl_prefix_s *prefix;
 
@@ -796,7 +814,20 @@ int ccnl_cache_content(int suite, char *name, char *content, int len)
     c->pkt->buf = NULL;//data empty buffer, generate ccn data when needed
     ccnl_content_add2cache(&theRelay, c);
 
-    my_ccnl_do_ageing();
+    if(ccnl_cache_search(c->pkt)){
+		struct ccnl_buf_s *b= ccnl_mkSimpleContent(c->pkt->pfx,
+				c->pkt->content, c->pkt->contlen, 0);
+			if(!b){
+				DEBUGMSG(ERROR, "content buffer could not be created!\n");
+				return -1;
+			}
+
+		int i = b->datalen;
+		memcpy(buf_out, b->data, i);
+		*out_len=i;
+		DEBUGMSG(TRACE, "output content size is %d\n", i);
+    	return 1;
+    }
 
     return 0;
 }

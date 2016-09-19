@@ -112,12 +112,14 @@ int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
 
 void my_ccnl_do_ageing();
 
+int ccnl_cache_search(struct ccnl_pkt_s *pkt);
+
 int ccnl_make_content(int suite, char *name, char *content, unsigned int *chunknum,
                       unsigned char *buf, int* len);
 
-int ccnl_find_content(int suite, char *interest, int len,char *buf, int *lens);
+int ccnl_find_content(int suite, char *interest, int len, char *buf, int *lens);
 
-int ccnl_cache_content(int suite, char *name, char *content, int len);
+int ccnl_cache_content(int suite, char *name, char *content, int len, unsigned char *buf, int *lens);
 // void *ccnl_malloc(size_t size); // Allocate uninitialized memory.
 // void *ccnl_calloc(size_t number, size_t size); // Allocate zero-initialized memory.
 // void *ccnl_realloc(void *ptr, size_t size); // Change the size of an allocated object.
