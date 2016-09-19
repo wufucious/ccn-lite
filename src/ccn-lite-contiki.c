@@ -605,31 +605,8 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 
 		for (c2 = theRelay.contents; c2; c2 = c2->next){
 			if(ccnl_ndntlv_cMatch(pkt, c2)==0){
-				DEBUGMSG(TRACE, "after compared all contents, "
+				DEBUGMSG(TRACE, "NDNTLV searching, after compared all contents, "
 						"got match content finally, going to write it to output buffer\n");
-
-				//if buf empty, online generate ccn data and cache it or abort
-				struct ccnl_buf_s *b2 = c2->pkt->buf;
-				if(!b2){
-					b2 = ccnl_mkSimpleContent(c2->pkt->pfx,
-							c2->pkt->content, c2->pkt->contlen, 0);
-					if(!b2){
-						DEBUGMSG(ERROR, "content buffer could not be created!\n");
-						return -1;
-					}
-				}
-
-				int i = b2->datalen;
-				memcpy(buf_out, b2->data, i);
-				*out_len=i;
-				DEBUGMSG(TRACE, "output content size is %d\n", i);
-#ifndef CONTENT_CACHE
-				ccnl_free(b2);		//abort content
-				DEBUGMSG(TRACE, "Abort the new generated data\n");
-#else
-				c2->pkt->buf = b2;//cache content
-				DEBUGMSG(TRACE, "Cache the new generated data\n");
-#endif
 				break;
 			}
 		}
@@ -651,26 +628,47 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 		for (c2 = theRelay.contents; c2; c2 = c2->next){
 			if(ccnl_ccntlv_cMatch(pkt, c2)==0){
 				int i = c2->pkt->buf->datalen;
-				DEBUGMSG(TRACE, "after compared all contents, "
+				DEBUGMSG(TRACE, "CCNTLV searching, after compared all contents, "
 						"got match content finally and write it to output buffer\n");
-				memcpy(buf_out, c2->pkt->buf->data, i);
-				*out_len=i;
-				DEBUGMSG(TRACE, "output buffer size is %d\n", i);
+//				memcpy(buf_out, c2->pkt->buf->data, i);
+//				*out_len=i;
+//				DEBUGMSG(TRACE, "output buffer size is %d\n", i);
 				break;
 			}
 		}
 	}
 
-    free_packet(pkt);
+    if(c2){
+		//if buf empty, online generate ccn data and cache it or abort
+		struct ccnl_buf_s *b2 = c2->pkt->buf;
+		if(!b2){
+			b2 = ccnl_mkSimpleContent(c2->pkt->pfx,
+					c2->pkt->content, c2->pkt->contlen, 0);
+			if(!b2){
+				DEBUGMSG(ERROR, "content buffer could not be created!\n");
+				return -1;
+			}
+		}
 
-    if(c2 == NULL) {
+		int i = b2->datalen;
+		memcpy(buf_out, b2->data, i);
+		*out_len=i;
+		DEBUGMSG(TRACE, "output content size is %d\n", i);
+#ifndef CONTENT_CACHE
+		ccnl_free(b2);		//abort content
+		DEBUGMSG(TRACE, "Abort the new generated data\n");
+#else
+		c2->pkt->buf = b2;//cache content
+		DEBUGMSG(TRACE, "Cache the new generated data\n");
+#endif
+    }else{
   		DEBUGMSG(TRACE, "after compared all contents,"
   		 			"can not find any match data in buffer\n");
-#ifdef INTEREST_PENDING
-
-#endif
-  		return -1;
+  	    free_packet(pkt);
+  	    return -1;
   	}
+
+    free_packet(pkt);
 	return 0;
 }
 
