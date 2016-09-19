@@ -186,6 +186,14 @@ struct ccnl_face_s *loopback_face;      //riot add
 
 #include "ccnl-core.c"
 /*-------------------------------------------------------------------*/
+//dummy
+void
+ccnl_ll_TX(struct ccnl_relay_s *ccnl, struct ccnl_if_s *ifc,
+           sockunion *dest, struct ccnl_buf_s *buf)
+{
+	return;
+}
+/*-------------------------------------------------------------------*/
 #ifdef USE_SUITE_NDNTLV
 
 #ifdef NEEDS_PACKET_CRAFTING
@@ -342,8 +350,13 @@ ccnl_suite2isContentFunc(int suite)
 /*-------------------------------------------------------*/
 int ccnl_init()
 {
-    (&theRelay)->max_cache_entries = CCNL_MAX_CACHE_ENTRIES;
-    return 0;
+	loopback_face = ccnl_get_face_or_create(&theRelay, -1, NULL, 0);
+	loopback_face->flags |= CCNL_FACE_FLAGS_STATIC;
+
+	theRelay.max_cache_entries = CCNL_MAX_CACHE_ENTRIES;
+	theRelay.max_pit_entries = CCNL_MAX_PIT_ENTRIES;
+
+	return 0;
 }
 
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
@@ -627,7 +640,6 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
 
 		for (c2 = theRelay.contents; c2; c2 = c2->next){
 			if(ccnl_ccntlv_cMatch(pkt, c2)==0){
-				int i = c2->pkt->buf->datalen;
 				DEBUGMSG(TRACE, "CCNTLV searching, after compared all contents, "
 						"got match content finally and write it to output buffer\n");
 //				memcpy(buf_out, c2->pkt->buf->data, i);
@@ -664,8 +676,39 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
     }else{
   		DEBUGMSG(TRACE, "after compared all contents,"
   		 			"can not find any match data in buffer\n");
-  	    free_packet(pkt);
-  	    return -1;
+#ifndef INTEREST_PENDING
+  		free_packet(pkt);
+#else
+//  		pkt->pfx->suite = suite;
+  		//check if pit already has this interest
+  		struct ccnl_interest_s *i;
+
+  		for(i = theRelay.pit; i; i = i->next){
+  			if(ccnl_interest_isSame(i,pkt)){
+  	  			DEBUGMSG(TRACE, "This interest already in pit\n");
+  				break;
+  			}
+  		}
+
+  		if(i){
+  			DEBUGMSG(TRACE, "update last_used value of that interest\n");
+  			i->last_used = CCNL_NOW();
+  			free_packet(pkt);
+  		}else{
+  			DEBUGMSG(TRACE, "This interest not yet in pit, going to cache it\n");
+  			struct ccnl_interest_s *i2 = ccnl_interest_new(&theRelay, loopback_face, &pkt);
+  			if(!i2){
+  				DEBUGMSG(TRACE, "cache interest failed!\n");
+  				free_packet(pkt);
+  			}else{
+  				DEBUGMSG(TRACE, "cache interest sucess!\n");
+  				//ccnl_free(pkt->buf);//TODO:remove dummy to save space, but this seems cause prefix problem
+  			}
+  		}
+
+#endif
+  		return -1;
+
   	}
 
     free_packet(pkt);
