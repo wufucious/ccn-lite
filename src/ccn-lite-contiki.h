@@ -110,6 +110,8 @@ int ccnl_init();
 int ccnl_make_interest(int suite, char *name, unsigned int *chunknum,
                       unsigned char *buf, size_t buf_len, int* len);
 
+void my_ccnl_do_ageing();
+
 int ccnl_make_content(int suite, char *name, char *content, unsigned int *chunknum,
                       unsigned char *buf, int* len);
 

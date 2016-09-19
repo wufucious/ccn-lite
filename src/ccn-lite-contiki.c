@@ -359,6 +359,42 @@ int ccnl_init()
 	return 0;
 }
 
+void
+my_ccnl_do_ageing()
+{
+//    struct ccnl_content_s *c = relay->contents;
+    struct ccnl_interest_s *i = theRelay.pit;
+    int t = CCNL_NOW();
+    DEBUGMSG_CORE(VERBOSE, "ageing t=%d\n", (int)(t/CLOCK_SECOND));
+
+//    while (c) {
+//        if ((c->last_used + CCNL_CONTENT_TIMEOUT) <= t &&
+//                                !(c->flags & CCNL_CONTENT_FLAGS_STATIC)){
+//          DEBUGMSG_CORE(TRACE, "AGING: CONTENT REMOVE %p\n", (void*) c);
+//            c = ccnl_content_remove(relay, c);
+//        }
+//        else
+//            c = c->next;
+//    }
+
+    while (i) { // CONFORM: "Entries in the PIT MUST timeout rather
+                // than being held indefinitely."
+        if ((i->last_used + MY_CCNL_INTEREST_TIMEOUT) <= t /*&&
+                                i->retries >= CCNL_MAX_INTEREST_RETRANSMIT*/) {
+            char *s = NULL;
+            DEBUGMSG_CORE(TRACE, "AGING: INTEREST REMOVE %p\n", (void*) i);
+            DEBUGMSG_CORE(DEBUG, " timeout: remove interest 0x%p <%s>\n",
+                          (void*)i,
+                     (s = ccnl_prefix_to_path(i->pkt->pfx)));
+            ccnl_free(s);
+            ccnl_interest_remove(&theRelay, i);
+        }
+        i = i->next;
+    }
+
+    return;
+}
+
 int ccnl_make_interest(int suite, char *name, /*uint8_t *addr,
                                size_t addr_len,*/ unsigned int *chunknum,
                                unsigned char *buf, size_t buf_len, int *lens)
@@ -759,6 +795,8 @@ int ccnl_cache_content(int suite, char *name, char *content, int len)
     c->flags = CCNL_CONTENT_FLAGS_STALE;//content can be removed
     c->pkt->buf = NULL;//data empty buffer, generate ccn data when needed
     ccnl_content_add2cache(&theRelay, c);
+
+    my_ccnl_do_ageing();
 
     return 0;
 }
