@@ -408,7 +408,7 @@ int ccnl_cache_search(struct ccnl_pkt_s *pkt)
 			return 1;
 		}
 	}
-	DEBUGMSG(TRACE, "after search the cache, can not "
+	DEBUGMSG(TRACE, "after search the pit cache, can not "
 			"found pending interest which match this content \n");
 	return 0;
 }
@@ -761,7 +761,7 @@ int ccnl_find_content(int suite, char *interest, int len, char *buf_out, int *ou
   		}
 
 #endif
-  		return -1;
+  		return 1;
 
   	}
 
@@ -817,10 +817,11 @@ int ccnl_cache_content(int suite, char *name, char *content, int len, unsigned c
     if(ccnl_cache_search(c->pkt)){
 		struct ccnl_buf_s *b= ccnl_mkSimpleContent(c->pkt->pfx,
 				c->pkt->content, c->pkt->contlen, 0);
-			if(!b){
-				DEBUGMSG(ERROR, "content buffer could not be created!\n");
-				return -1;
-			}
+
+		if(!b){
+			DEBUGMSG(ERROR, "content buffer could not be created!\n");
+			return -1;
+		}
 
 		int i = b->datalen;
 		memcpy(buf_out, b->data, i);
