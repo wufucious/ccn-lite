@@ -22,14 +22,13 @@
  */
 #define CCNL_CONTIKI
 
-#include <assert.h>//riot
-#include <stdbool.h>//riot
-#include <stdio.h>//riot
-#include <stdlib.h>//riot
-#include <string.h>//riot
-#include <time.h>//riot
-#include <unistd.h>//riot
-//#include <sys/time.h>//where contains timeval and gettimeofday
+#include <assert.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 #include <stdint.h> //add by me //uint32_t uint8_t......
 #include <limits.h> //INT_MAX...
 
@@ -180,9 +179,9 @@ current_time(void)
 //}
 
 /*-------------------------------------------------------------------*/
-int debug_level =VERBOSE;//VERBOSE;												//riot redefined in ccnl-common.c
-struct ccnl_relay_s theRelay;									//riot in ccnl-core.h
-struct ccnl_face_s *loopback_face;      //riot add
+int debug_level =VERBOSE;
+struct ccnl_relay_s theRelay;
+struct ccnl_face_s *loopback_face;
 
 #include "ccnl-core.c"
 /*-------------------------------------------------------------------*/
